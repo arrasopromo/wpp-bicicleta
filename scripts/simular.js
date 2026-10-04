@@ -15,8 +15,9 @@ let midias = 0;
 console.log = (...a) => {
   if (a[0] !== '[DRY_RUN]') return logOriginal(...a);
   const corpo = JSON.parse(a[2]);
-  if (a[1].includes('sendMedia')) { midias++; return; }
-  if (midias) { logOriginal(`   🤖 [${midias} fotos/vídeos]`); midias = 0; }
+  if (a[1].includes('sendMedia')) {
+    return logOriginal(`   🤖 [${corpo.mediatype === 'video' ? 'vídeo' : 'foto'}] ${decodeURIComponent(corpo.media.split('/midia/')[1])}${corpo.caption ? `  legenda: ${corpo.caption}` : ''}`);
+  }
   logOriginal('   🤖 ' + corpo.text.replace(/\n+/g, '\n      '));
 };
 
@@ -44,8 +45,10 @@ async function conversa(titulo, numero, falas) {
   logOriginal(`   (etapa=${c.etapa} perfil=${c.perfil} pausado=${c.pausado_ate > Date.now()})`);
 }
 
-await conversa('Roteiro da loja', '5531900000001', ['Olá, vi o anúncio', 'bicicleta', 'menina de 8 anos', '1', 'quero']);
-await conversa('Tudo numa frase', '5531900000002', ['Oi', 'quero uma bike pro meu filho de 4 anos']);
+await conversa('Roteiro da loja', '5531900000001', ['Olá, vi o anúncio', 'bicicleta', 'menina de 8 anos', '1', 'sim, gostei!']);
+await conversa('Quer aro 20 direto, não gostou', '5531900000011', ['oi', 'quero aro 20 masculina', '1', 'não muito']);
+await conversa('Tudo numa frase, gostou', '5531900000002', ['Oi', 'quero uma bike pro meu filho de 4 anos', 'gostei, é pro meu filho mesmo']);
+await conversa('Pede outro aro depois', '5531900000012', ['oi', 'bike aro 24 menino', 'e a aro 26?']);
 await conversa('Por altura', '5531900000003', ['Boa tarde', 'bicicleta para minha esposa, ela tem 1,55']);
 await conversa('Só gênero, depois aro', '5531900000004', ['oi', 'bike masculina', '29']);
 await conversa('Adulto sem gênero', '5531900000005', ['olá', 'bike pra adulto', 'masculina', '3']);

@@ -104,20 +104,23 @@ export function criarBot({ catalogo, publicUrl }) {
     });
   }
 
+  // Foto + vídeo da bike destaque da pasta, e pergunta se gostou
   async function enviarBicicleta(jid, bike, perfil) {
-    await mandar(jid, config.enviandoFotos(bike.nome));
-    for (const arq of bike.arquivos) {
+    for (const [i, arq] of bike.envio.entries()) {
       if (arq.tipo === 'video' && arq.mb > config.videoMaxMB) {
         console.warn(`vídeo grande demais, pulando: ${bike.pasta}/${arq.nome} (${arq.mb.toFixed(0)} MB)`);
         continue;
       }
       const url = `${publicUrl}/midia/${encodeURIComponent(bike.pasta)}/${encodeURIComponent(arq.nome)}`;
       await enviar(jid, 'bot',
-        () => enviarMidia(jid, { tipo: arq.tipo, mimetype: arq.mimetype, fileName: arq.nome, url }),
+        () => enviarMidia(jid, {
+          tipo: arq.tipo, mimetype: arq.mimetype, fileName: arq.nome, url,
+          caption: i === 0 ? `*${bike.nome}*` : undefined,
+        }),
         { tipo: arq.tipo === 'video' ? 'video' : 'imagem', texto: `${bike.nome} — ${arq.nome}` });
     }
-    await mandar(jid, config.depoisDasFotos);
-    salvar(jid, 'pos-fotos', { ...perfil, opcoes: undefined, tentativas: 0 });
+    await mandar(jid, config.gostou);
+    salvar(jid, 'gostou', { ...perfil, opcoes: undefined, tentativas: 0, viu: bike.nome });
   }
 
   // Com o que já sabemos do cliente, decide: perguntar, recomendar ou mandar fotos
@@ -233,6 +236,14 @@ export function criarBot({ catalogo, publicUrl }) {
       return salvar(jid, 'interesse', perfil);
     }
 
+    // Perguntamos se gostou do modelo: a resposta vai para o atendente,
+    // a não ser que o cliente peça outro tamanho ("e o aro 24?", "tem pra 10 anos?")
+    if (c.etapa === 'gostou') {
+      const outroTamanho = !e.sim && (e.aro || e.idade != null || e.altura || AROS.includes(e.numero));
+      if (outroTamanho) return fluxoBicicleta(jid, c, AROS.includes(e.numero) ? { ...perfil, aro: e.numero } : perfil);
+      return chamarAtendente(jid, c, e.sim ? config.interesse : config.outrosModelos);
+    }
+
     // Intenções que valem em qualquer etapa
     if (e.atendente) return chamarAtendente(jid, c, config.atendente);
     if (e.manutencao && !e.temPerfil) return chamarAtendente(jid, c, config.manutencao);
@@ -269,12 +280,6 @@ export function criarBot({ catalogo, publicUrl }) {
         if (AROS.includes(e.numero)) return fluxoBicicleta(jid, c, { ...perfil, aro: e.numero });
         return naoEntendeu(jid, c, perfil, config.naoEntendiEscolha);
       }
-
-      case 'pos-fotos':
-        if (e.sim) return chamarAtendente(jid, c, config.interesse);
-        if (AROS.includes(e.numero)) return fluxoBicicleta(jid, c, { ...perfil, aro: e.numero });
-        if (e.bicicleta) return fluxoBicicleta(jid, c, perfil);
-        return naoEntendeu(jid, c, perfil, config.depoisDasFotos);
 
       default:
         return naoEntendeu(jid, c, perfil, config.naoEntendi);

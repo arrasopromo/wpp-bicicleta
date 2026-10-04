@@ -47,12 +47,8 @@ export const config = {
 
   escolhaModelo: (lista) => ['Temos estas opções:', '', lista, '', 'Qual você quer ver? Responda com o *número*.'].join('\n'),
 
-  enviandoFotos: (nome) => `Vou te mandar as fotos da *${nome}* 📸`,
-
-  depoisDasFotos: [
-    'Gostou de alguma? Responda *quero* que um atendente te passa valores e condições.',
-    'Se quiser ver outro tamanho, é só me dizer (ex.: _aro 24_ ou _menina de 7 anos_).',
-  ].join('\n'),
+  // Depois da foto + vídeo da bike destaque
+  gostou: 'Gostou desse modelo? 😊',
 
   semFotos: (aros) => `No momento não tenho as fotos do *aro ${aros.join(' / ')}* aqui, mas um atendente já vai te mostrar as opções. 🙋`,
 
@@ -66,6 +62,7 @@ export const config = {
   // Quando o bot passa a conversa para uma pessoa (ele fica calado depois)
   atendente: 'Certo! 🙋 Um atendente vai te responder aqui em instantes.',
   interesse: 'Ótima escolha! 🙌 Um atendente já vai te passar valores e condições.',
+  outrosModelos: 'Sem problema! Temos outros modelos e cores. Um atendente já vai te mostrar as opções. 🙋',
   preco: 'Os valores variam por modelo. Um atendente já vai te passar os preços e condições. 🙋',
   pecas: 'Temos sim peças e acessórios! Me diz qual você procura que um atendente já te responde com disponibilidade e valor. 🙋',
   manutencao: 'Fazemos manutenção sim! 🔧 Me conta o que a bike tem que um atendente já te responde.',

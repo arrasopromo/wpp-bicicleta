@@ -32,10 +32,15 @@ export function carregarCatalogo(dir) {
           mimetype: mimeDe(f),
           mb: statSync(join(dir, d.name, f)).size / 1048576,
         }));
+      // A bike destaque da pasta: arquivos que começam com "DESTAQUE" (1 foto + 1 vídeo).
+      // Sem destaque, vai a primeira foto.
+      const destaque = arquivos.filter((a) => /^destaque/i.test(a.nome));
+      const fotos = destaque.length ? destaque : arquivos.filter((a) => a.tipo === 'image').slice(0, 1);
+      const envio = [...fotos.filter((a) => a.tipo === 'image'), ...fotos.filter((a) => a.tipo === 'video')];
       const aro = Number(/aro\s*(\d+)/i.exec(d.name)?.[1]) || null;
       // F/M pelo nome da pasta; BMX, Free Ride e sem gênero valem para os dois
       const tipo = /\bfem/i.test(d.name) ? 'F' : /\bmasc/i.test(d.name) ? 'M' : null;
-      return { pasta: d.name, nome: nomeBonito(d.name), aro, tipo, arquivos };
+      return { pasta: d.name, nome: nomeBonito(d.name), aro, tipo, arquivos, envio };
     })
     .filter((b) => b.arquivos.length)
     .sort((a, b) => a.pasta.localeCompare(b.pasta, 'pt-BR', { numeric: true }));
