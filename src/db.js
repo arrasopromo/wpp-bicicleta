@@ -39,6 +39,11 @@ db.exec(`
   CREATE TABLE IF NOT EXISTS ajustes (chave TEXT PRIMARY KEY, valor TEXT);
 `);
 
+// Colunas novas em bancos já existentes
+for (const col of ['perfil TEXT']) {
+  try { db.exec(`ALTER TABLE contatos ADD COLUMN ${col}`); } catch { /* já existe */ }
+}
+
 // Pausa pelo botão: dura até alguém clicar em "Retomar"
 export const PAUSA_MANUAL = 253402300799000;
 
@@ -46,7 +51,7 @@ export const STATUS = ['novo', 'em atendimento', 'aguardando cliente', 'vendido'
 
 const CAMPOS = new Set([
   'nome', 'origem', 'anuncio_titulo', 'anuncio_texto', 'anuncio_url', 'anuncio_id', 'ctwa_clid', 'anuncio_em',
-  'status', 'notas', 'etapa', 'visto_em', 'pausado_ate', 'nao_lidas',
+  'status', 'notas', 'etapa', 'perfil', 'visto_em', 'pausado_ate', 'nao_lidas',
 ]);
 
 export const contato = (jid) => db.prepare('SELECT * FROM contatos WHERE jid = ?').get(jid);

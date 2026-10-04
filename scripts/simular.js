@@ -4,40 +4,53 @@ process.env.DB_PATH = ':memory:';
 const { resolve } = await import('node:path');
 const { carregarCatalogo } = await import('../src/catalogo.js');
 const { criarBot } = await import('../src/bot.js');
-const { contato, mensagensDe } = await import('../src/db.js');
+const { contato } = await import('../src/db.js');
 
 const dados = carregarCatalogo(resolve(process.env.MEDIA_DIR || './midia'));
-const bot = criarBot({ catalogo: () => dados, publicUrl: process.env.PUBLIC_URL });
+const bot = criarBot({ catalogo: () => dados, publicUrl: 'https://exemplo' });
 
-const msg = (numero, texto, { anuncio = false, fromMe = false } = {}) => ({
+// Mostra só o que o cliente veria, resumindo as mídias
+const logOriginal = console.log;
+let midias = 0;
+console.log = (...a) => {
+  if (a[0] !== '[DRY_RUN]') return logOriginal(...a);
+  const corpo = JSON.parse(a[2]);
+  if (a[1].includes('sendMedia')) { midias++; return; }
+  if (midias) { logOriginal(`   🤖 [${midias} fotos/vídeos]`); midias = 0; }
+  logOriginal('   🤖 ' + corpo.text.replace(/\n+/g, '\n      '));
+};
+
+let n = 0;
+const msg = (numero, texto, { anuncio = false } = {}) => ({
   event: 'messages.upsert',
   data: {
-    key: { remoteJid: `${numero}@s.whatsapp.net`, fromMe, id: Math.random().toString(36).slice(2) },
-    pushName: fromMe ? 'Loja' : 'Cliente Teste',
+    key: { remoteJid: `${numero}@s.whatsapp.net`, fromMe: false, id: `m${n++}` },
+    pushName: 'Cliente',
     message: anuncio
-      ? { extendedTextMessage: { text: texto, contextInfo: { externalAdReply: {
-          title: 'Bike Aro 29 em promoção', body: 'Chama no WhatsApp', sourceType: 'ad', sourceId: '1202', ctwaClid: 'abc' } } } }
+      ? { extendedTextMessage: { text: texto, contextInfo: { externalAdReply: { title: 'Bikes infantis', sourceType: 'ad', sourceId: '1' } } } }
       : { conversation: texto },
     messageTimestamp: Math.floor(Date.now() / 1000),
   },
 });
 
-async function passo(rotulo, evento) {
-  console.log(`\n>>> ${rotulo}`);
-  await bot(evento);
+async function conversa(titulo, numero, falas) {
+  logOriginal(`\n══════ ${titulo} ══════`);
+  for (const [i, f] of falas.entries()) {
+    logOriginal(`👤 ${f}`);
+    await bot(msg(numero, f, { anuncio: i === 0 }));
+    if (midias) { logOriginal(`   🤖 [${midias} fotos/vídeos]`); midias = 0; }
+  }
+  const c = contato(`${numero}@s.whatsapp.net`);
+  logOriginal(`   (etapa=${c.etapa} perfil=${c.perfil} pausado=${c.pausado_ate > Date.now()})`);
 }
 
-const ORG = '5531911110000';
-const ADS = '5531922220000';
-
-await passo('orgânico: "oi" (deve só registrar, sem resposta)', msg(ORG, 'oi'));
-await passo('anúncio: "Olá, vi o anúncio" (deve saudar citando o anúncio)', msg(ADS, 'Olá, vi o anúncio', { anuncio: true }));
-await passo('anúncio: "2"', msg(ADS, '2'));
-await passo('atendente responde pelo celular (deve pausar o bot)', msg(ADS, 'Oi! Sou o Pedro, posso ajudar?', { fromMe: true }));
-await passo('anúncio: "1" (bot pausado, sem resposta)', msg(ADS, '1'));
-
-for (const n of [ORG, ADS]) {
-  const c = contato(`${n}@s.whatsapp.net`);
-  console.log(`\n[CRM] ${n}: origem=${c.origem} anuncio="${c.anuncio_titulo ?? ''}" pausado=${c.pausado_ate > Date.now()} naoLidas=${c.nao_lidas}`);
-  for (const m of mensagensDe(c.jid)) console.log(`   ${m.autor.padEnd(9)} ${m.texto.replace(/\n/g, ' ').slice(0, 70)}`);
-}
+await conversa('Roteiro da loja', '5531900000001', ['Olá, vi o anúncio', 'bicicleta', 'menina de 8 anos', '1', 'quero']);
+await conversa('Tudo numa frase', '5531900000002', ['Oi', 'quero uma bike pro meu filho de 4 anos']);
+await conversa('Por altura', '5531900000003', ['Boa tarde', 'bicicleta para minha esposa, ela tem 1,55']);
+await conversa('Só gênero, depois aro', '5531900000004', ['oi', 'bike masculina', '29']);
+await conversa('Adulto sem gênero', '5531900000005', ['olá', 'bike pra adulto', 'masculina', '3']);
+await conversa('Pergunta endereço no meio', '5531900000006', ['oi', 'onde fica a loja?', 'bicicleta aro 12 menino']);
+await conversa('Manutenção', '5531900000007', ['oi', 'preciso arrumar o freio da minha bike']);
+await conversa('Peças', '5531900000008', ['oi', 'vocês tem capacete?']);
+await conversa('Preço direto', '5531900000009', ['oi', 'quanto custa?']);
+await conversa('Não entende 2x', '5531900000010', ['oi', 'asdf', 'hmm']);

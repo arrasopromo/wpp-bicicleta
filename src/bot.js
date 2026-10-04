@@ -2,6 +2,7 @@
 // (por padrão só para quem chegou por anúncio).
 import { config } from '../config.js';
 import { enviarTexto, enviarMidia, idsEnviados } from './evolution.js';
+import { entender, arosPara, AROS } from './entender.js';
 import {
   contato, garantirContato, atualizarContato, registrarRecebida, registrarEnviada, ajuste,
 } from './db.js';
@@ -83,16 +84,27 @@ export function detectarAnuncio(d) {
   };
 }
 
+const lerPerfil = (c) => { try { return JSON.parse(c.perfil || '{}'); } catch { return {}; } };
+
 export function criarBot({ catalogo, publicUrl }) {
-  const listaAros = () => catalogo().map((b, i) => `*${i + 1}* - ${b.nome}`).join('\n');
   const mandar = (jid, texto) => enviarTextoComo(jid, 'bot', texto);
 
-  async function mostrarMenu(jid, saudacao) {
-    await mandar(jid, saudacao ? `${saudacao}\n\n${config.menu}` : config.menu);
-    atualizarContato(jid, { etapa: 'menu' });
+  function salvar(jid, etapa, perfil) {
+    atualizarContato(jid, { etapa, perfil: JSON.stringify(perfil) });
   }
 
-  async function enviarBicicleta(jid, bike) {
+  // Passa para uma pessoa: avisa o cliente e o bot fica calado com ele
+  async function chamarAtendente(jid, c, texto) {
+    await mandar(jid, texto);
+    atualizarContato(jid, {
+      etapa: null,
+      perfil: null,
+      status: c.status === 'novo' ? 'em atendimento' : c.status,
+      pausado_ate: Date.now() + config.pausaHoras * 3600_000,
+    });
+  }
+
+  async function enviarBicicleta(jid, bike, perfil) {
     await mandar(jid, config.enviandoFotos(bike.nome));
     for (const arq of bike.arquivos) {
       if (arq.tipo === 'video' && arq.mb > config.videoMaxMB) {
@@ -105,7 +117,55 @@ export function criarBot({ catalogo, publicUrl }) {
         { tipo: arq.tipo === 'video' ? 'video' : 'imagem', texto: `${bike.nome} — ${arq.nome}` });
     }
     await mandar(jid, config.depoisDasFotos);
-    atualizarContato(jid, { etapa: 'pos-fotos' });
+    salvar(jid, 'pos-fotos', { ...perfil, opcoes: undefined, tentativas: 0 });
+  }
+
+  // Com o que já sabemos do cliente, decide: perguntar, recomendar ou mandar fotos
+  async function fluxoBicicleta(jid, c, perfil) {
+    const aros = perfil.aro ? [perfil.aro] : arosPara(perfil);
+
+    if (!aros.length) {
+      if (!perfil.genero) {
+        await mandar(jid, config.perguntaPerfil);
+        return salvar(jid, 'perfil', perfil);
+      }
+      await mandar(jid, config.tabelaAros);
+      return salvar(jid, 'aro', perfil);
+    }
+
+    const recomendacao = perfil.aro || perfil.recomendou ? '' : config.recomendacao(perfil, aros);
+    const opcoes = catalogo().filter((b) => aros.includes(b.aro));
+    if (!opcoes.length) {
+      if (recomendacao) await mandar(jid, recomendacao);
+      return chamarAtendente(jid, c, config.semFotos(aros));
+    }
+
+    let lista = opcoes;
+    if (perfil.genero) {
+      const doGenero = opcoes.filter((b) => b.tipo === perfil.genero || b.tipo === null);
+      if (doGenero.length) lista = doGenero;
+    } else if (opcoes.some((b) => b.tipo)) {
+      // tem versão masculina/feminina: pergunta antes de listar
+      if (recomendacao) await mandar(jid, recomendacao);
+      await mandar(jid, config.perguntaGenero);
+      return salvar(jid, 'perfil', {
+        ...perfil, aro: perfil.aro ?? (aros.length === 1 ? aros[0] : undefined), recomendou: !!recomendacao,
+      });
+    }
+
+    if (recomendacao) await mandar(jid, recomendacao);
+    if (lista.length === 1) return enviarBicicleta(jid, lista[0], perfil);
+
+    await mandar(jid, config.escolhaModelo(lista.map((b, i) => `*${i + 1}* - ${b.nome}`).join('\n')));
+    salvar(jid, 'escolha', { ...perfil, opcoes: lista.map((b) => b.pasta) });
+  }
+
+  // Não entendeu: tenta de novo uma vez, na segunda chama o atendente
+  async function naoEntendeu(jid, c, perfil, texto) {
+    const tentativas = (perfil.tentativas ?? 0) + 1;
+    if (tentativas >= 2) return chamarAtendente(jid, c, config.naoEntendiFinal);
+    await mandar(jid, texto);
+    salvar(jid, c.etapa, { ...perfil, tentativas });
   }
 
   return async function processar(evento) {
@@ -137,7 +197,8 @@ export function criarBot({ catalogo, publicUrl }) {
     registrarRecebida({ waId: d.key.id, jid, autor: 'cliente', tipo, texto });
 
     // "#teste" faz a conversa se comportar como vinda de anúncio (para testar a automação)
-    const anuncio = detectarAnuncio(d) ?? (texto.toLowerCase() === '#teste' ? { titulo: 'Teste (#teste)' } : null);
+    const ehTeste = texto.toLowerCase() === '#teste';
+    const anuncio = detectarAnuncio(d) ?? (ehTeste ? { titulo: 'Teste (#teste)' } : null);
     if (anuncio) {
       atualizarContato(jid, {
         origem: 'anuncio', anuncio_titulo: anuncio.titulo, anuncio_texto: anuncio.texto, anuncio_url: anuncio.url,
@@ -153,38 +214,70 @@ export function criarBot({ catalogo, publicUrl }) {
     const novaConversa = anuncio || !c.etapa || Date.now() - c.visto_em > config.sessaoMinutos * 60_000;
     atualizarContato(jid, { visto_em: Date.now() });
 
+    const e = entender(ehTeste ? '' : texto);
+    let perfil = novaConversa ? {} : lerPerfil(c);
+    for (const k of ['genero', 'idade', 'altura', 'aro']) if (e[k] != null) perfil[k] = e[k];
+    // idade/altura nova vale mais que um aro escolhido antes
+    if ((e.idade != null || e.altura) && !e.aro) {
+      delete perfil.aro;
+      delete perfil.recomendou;
+    }
+
+    // Foto, áudio, vídeo do cliente: sem IA não dá para entender → pessoa
+    if (tipo !== 'texto' && !texto) return chamarAtendente(jid, c, config.midiaDoCliente);
+
     if (novaConversa) {
-      const saudacao = c.origem === 'anuncio'
-        ? config.saudacaoAnuncio(d.pushName, c.anuncio_titulo)
-        : config.saudacao(d.pushName);
-      return mostrarMenu(jid, saudacao);
-    }
-    if (texto === '0') return mostrarMenu(jid);
-
-    if (c.etapa === 'aro') {
-      const bike = catalogo()[Number(texto) - 1];
-      if (/^\d+$/.test(texto) && bike) return enviarBicicleta(jid, bike);
-      return mandar(jid, `${config.naoEntendi}\n\n${config.escolhaAro(listaAros())}`);
+      await mandar(jid, config.saudacao);
+      // A 1ª mensagem já diz o que quer ("quero bike aro 20 pra menina")? Segue direto
+      if (e.temPerfil && !e.pecas && !e.manutencao) return fluxoBicicleta(jid, contato(jid), perfil);
+      return salvar(jid, 'interesse', perfil);
     }
 
-    switch (texto) {
-      case '1':
-        atualizarContato(jid, { etapa: 'aro' });
-        return mandar(jid, config.escolhaAro(listaAros()));
-      case '2':
-        return mandar(jid, `${config.endereco}\n\n*0* - Voltar ao menu`);
-      case '3':
-        return mandar(jid, `${config.pagamento}\n\n*0* - Voltar ao menu`);
-      case '4':
-        await mandar(jid, config.atendente);
-        atualizarContato(jid, {
-          etapa: null,
-          status: c.status === 'novo' ? 'em atendimento' : c.status,
-          pausado_ate: Date.now() + config.pausaHoras * 3600_000,
-        });
-        return;
+    // Intenções que valem em qualquer etapa
+    if (e.atendente) return chamarAtendente(jid, c, config.atendente);
+    if (e.manutencao && !e.temPerfil) return chamarAtendente(jid, c, config.manutencao);
+    if (e.pecas && !e.bicicleta && !e.temPerfil) return chamarAtendente(jid, c, config.pecas);
+    if (e.temPerfil) return fluxoBicicleta(jid, c, perfil);
+    if (e.endereco) return mandar(jid, config.endereco);
+    if (e.pagamento) return mandar(jid, config.pagamento);
+    if (e.preco) return chamarAtendente(jid, c, config.preco);
+
+    // Resposta curta que só faz sentido na etapa atual
+    switch (c.etapa) {
+      case 'interesse':
+        if (e.bicicleta) return fluxoBicicleta(jid, c, perfil);
+        return naoEntendeu(jid, c, perfil, config.naoEntendi);
+
+      case 'perfil':
+        // perguntamos a idade: número solto é idade (ou altura em cm, se for grande)
+        if (e.numero != null) {
+          if (e.numero >= 80) perfil.altura = e.numero;
+          else perfil.idade = e.numero;
+          return fluxoBicicleta(jid, c, perfil);
+        }
+        if (e.bicicleta) return fluxoBicicleta(jid, c, perfil);
+        return naoEntendeu(jid, c, perfil, config.perguntaPerfil);
+
+      case 'aro':
+        if (AROS.includes(e.numero)) return fluxoBicicleta(jid, c, { ...perfil, aro: e.numero });
+        return naoEntendeu(jid, c, perfil, config.naoEntendiAro);
+
+      case 'escolha': {
+        const pasta = perfil.opcoes?.[e.numero - 1];
+        const bike = pasta && catalogo().find((b) => b.pasta === pasta);
+        if (bike) return enviarBicicleta(jid, bike, perfil);
+        if (AROS.includes(e.numero)) return fluxoBicicleta(jid, c, { ...perfil, aro: e.numero });
+        return naoEntendeu(jid, c, perfil, config.naoEntendiEscolha);
+      }
+
+      case 'pos-fotos':
+        if (e.sim) return chamarAtendente(jid, c, config.interesse);
+        if (AROS.includes(e.numero)) return fluxoBicicleta(jid, c, { ...perfil, aro: e.numero });
+        if (e.bicicleta) return fluxoBicicleta(jid, c, perfil);
+        return naoEntendeu(jid, c, perfil, config.depoisDasFotos);
+
       default:
-        return mandar(jid, `${config.naoEntendi}\n\n${config.menu}`);
+        return naoEntendeu(jid, c, perfil, config.naoEntendi);
     }
   };
 }

@@ -32,7 +32,10 @@ export function carregarCatalogo(dir) {
           mimetype: mimeDe(f),
           mb: statSync(join(dir, d.name, f)).size / 1048576,
         }));
-      return { pasta: d.name, nome: nomeBonito(d.name), arquivos };
+      const aro = Number(/aro\s*(\d+)/i.exec(d.name)?.[1]) || null;
+      // F/M pelo nome da pasta; BMX, Free Ride e sem gênero valem para os dois
+      const tipo = /\bfem/i.test(d.name) ? 'F' : /\bmasc/i.test(d.name) ? 'M' : null;
+      return { pasta: d.name, nome: nomeBonito(d.name), aro, tipo, arquivos };
     })
     .filter((b) => b.arquivos.length)
     .sort((a, b) => a.pasta.localeCompare(b.pasta, 'pt-BR', { numeric: true }));
