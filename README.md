@@ -41,11 +41,12 @@ npm run webhook    # cadastra/atualiza o webhook na Evolution
    cp .env.example .env   # preencher com os mesmos valores do .env local (WEBHOOK_TOKEN igual!)
    ```
    Envie a pasta de mídias para `wpp-bicicleta/midia/` (subpastas `Aro12 fem`, `Aro16 masc`, …).
-3. Rode com pm2 (porta 5000): `npm i -g pm2 && pm2 start npm --name wpp-bicicleta -- start && pm2 save && pm2 startup`
+3. Node 24 separado em `/opt/node24` (o do sistema fica intacto para os outros apps) e pm2 na porta 5000:
+   `pm2 start ecosystem.config.cjs && pm2 save`
 4. Nginx + HTTPS: siga os passos no topo de [`deploy/nginx.conf`](deploy/nginx.conf).
 5. Teste: `https://casadasbicicletas.site/` deve mostrar `wpp-bicicleta ok — 12 bicicletas no catálogo`.
 
-Atualizar depois: `git pull && pm2 restart wpp-bicicleta`.
+Atualizar depois: `cd /var/www/wpp-bicicleta && git pull && pm2 restart wpp-bicicleta`.
 
 O webhook já está cadastrado apontando para `https://casadasbicicletas.site/webhook/<WEBHOOK_TOKEN>`.
 Faça backup de `dados/crm.db` — é ali que ficam as conversas.
