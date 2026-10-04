@@ -1,0 +1,304 @@
+<!doctype html>
+<html lang="pt-BR">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>CRM · Casa das Bicicletas</title>
+<style>
+  :root {
+    --bg:#f7f7f8; --card:#fff; --txt:#18181b; --sub:#71717a; --borda:#e4e4e7; --hover:#f4f4f5; --sel:#f0f0f2;
+    --acc:#18181b; --acc-txt:#fff; --ponto-on:#22c55e; --ponto-off:#a1a1aa;
+    --cli:#fff; --nos:#f0f0f2;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root {
+      --bg:#0f0f11; --card:#18181b; --txt:#f4f4f5; --sub:#a1a1aa; --borda:#27272a; --hover:#1f1f23; --sel:#242428;
+      --acc:#f4f4f5; --acc-txt:#18181b; --ponto-off:#52525b;
+      --cli:#18181b; --nos:#26262a;
+    }
+  }
+  * { box-sizing:border-box; }
+  html, body { height:100%; }
+  body { margin:0; background:var(--bg); color:var(--txt); font:14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
+  button, select, input, textarea { font:inherit; color:inherit; }
+  button { cursor:pointer; }
+
+  .app { display:grid; grid-template-rows:auto 1fr; height:100vh; height:100dvh; }
+  header { display:flex; align-items:center; gap:12px; padding:12px 16px; background:var(--card); border-bottom:1px solid var(--borda); }
+  header h1 { font-size:15px; font-weight:600; margin:0; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
+  .global { display:flex; align-items:center; gap:7px; padding:6px 12px; border-radius:8px; border:1px solid var(--borda); background:var(--card); font-size:13px; }
+  .global .ponto { width:7px; height:7px; border-radius:50%; background:var(--ponto-on); }
+  .global.off .ponto { background:var(--ponto-off); }
+  header a { color:var(--sub); font-size:13px; text-decoration:none; }
+
+  main { display:grid; grid-template-columns:minmax(280px, 340px) 1fr; min-height:0; }
+  .lista { border-right:1px solid var(--borda); background:var(--card); display:flex; flex-direction:column; min-height:0; }
+  .filtros { padding:12px; display:flex; flex-direction:column; gap:10px; border-bottom:1px solid var(--borda); }
+  .filtros input { padding:8px 11px; border-radius:8px; border:1px solid var(--borda); background:var(--bg); outline:none; }
+  .filtros input:focus { border-color:var(--sub); }
+  .chips { display:flex; gap:4px; overflow-x:auto; }
+  .chip { padding:4px 10px; border-radius:6px; border:0; background:none; font-size:13px; color:var(--sub); white-space:nowrap; }
+  .chip:hover { background:var(--hover); }
+  .chip.ativo { background:var(--sel); color:var(--txt); font-weight:600; }
+  .itens { overflow-y:auto; flex:1; }
+  .item { display:block; width:100%; text-align:left; border:0; border-bottom:1px solid var(--borda); background:none; padding:12px 14px; }
+  .item:hover { background:var(--hover); }
+  .item.sel { background:var(--sel); }
+  .linha { display:flex; align-items:center; gap:8px; }
+  .nome { font-weight:600; flex:1; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .hora { color:var(--sub); font-size:12px; }
+  .previa { color:var(--sub); font-size:13px; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; flex:1; }
+  .naolidas { background:var(--acc); color:var(--acc-txt); font-size:11px; font-weight:600; border-radius:999px; min-width:18px; padding:1px 6px; text-align:center; }
+  .info { margin-top:3px; font-size:12px; color:var(--sub); overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .vazio { padding:40px 20px; text-align:center; color:var(--sub); }
+
+  .conversa { display:flex; flex-direction:column; min-height:0; }
+  .topo { background:var(--card); border-bottom:1px solid var(--borda); padding:12px 16px; }
+  .topo-linha { display:flex; align-items:center; gap:12px; flex-wrap:wrap; }
+  .voltar { display:none; border:0; background:none; font-size:20px; padding:0 4px 0 0; color:var(--sub); }
+  .quem { flex:1; min-width:0; }
+  .topo h2 { font-size:15px; margin:0; }
+  .topo .sub { color:var(--sub); font-size:13px; margin-top:1px; }
+  .topo .sub a { color:inherit; }
+  .acoes { display:flex; gap:8px; align-items:center; }
+  .acoes select { padding:6px 8px; border-radius:8px; border:1px solid var(--borda); background:var(--card); }
+  .btn { padding:6px 12px; border-radius:8px; border:1px solid var(--borda); background:var(--card); font-weight:500; white-space:nowrap; }
+  .btn:hover { background:var(--hover); }
+  .btn.primario { background:var(--acc); border-color:var(--acc); color:var(--acc-txt); }
+
+  .msgs { flex:1; overflow-y:auto; padding:16px; display:flex; flex-direction:column; gap:6px; }
+  .msg { max-width:min(72%, 560px); padding:7px 11px 5px; border-radius:10px; white-space:pre-wrap; word-wrap:break-word; }
+  .msg.cliente { align-self:flex-start; background:var(--cli); border:1px solid var(--borda); }
+  .msg.bot, .msg.atendente { align-self:flex-end; background:var(--nos); }
+  .msg .meta { font-size:11px; color:var(--sub); text-align:right; margin-top:2px; }
+  .msg .midia { color:var(--sub); }
+  .dia { align-self:center; font-size:12px; color:var(--sub); margin:10px 0 4px; }
+
+  .resposta { display:flex; gap:8px; padding:10px 12px; background:var(--card); border-top:1px solid var(--borda); }
+  .resposta textarea { flex:1; resize:none; height:40px; max-height:140px; padding:9px 12px; border-radius:8px; border:1px solid var(--borda); background:var(--bg); outline:none; }
+  .resposta textarea:focus { border-color:var(--sub); }
+  .resposta button { border:0; border-radius:8px; background:var(--acc); color:var(--acc-txt); font-weight:600; padding:0 16px; }
+  .resposta button:disabled { opacity:.5; }
+  .placeholder { flex:1; display:grid; place-items:center; color:var(--sub); padding:20px; text-align:center; }
+
+  @media (max-width: 760px) {
+    main { grid-template-columns:1fr; }
+    .lista { border-right:0; }
+    main.abrir .lista { display:none; }
+    main:not(.abrir) .conversa { display:none; }
+    .voltar { display:inline; }
+    .msg { max-width:86%; }
+    .acoes { width:100%; }
+    .acoes select { flex:1; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <header>
+    <h1>Casa das Bicicletas</h1>
+    <button class="global" id="global" title="Liga/desliga a automação para todo mundo"><span class="ponto"></span><span id="global-txt">…</span></button>
+    <a href="/crm/sair">Sair</a>
+  </header>
+  <main id="main">
+    <section class="lista">
+      <div class="filtros">
+        <input id="busca" type="search" placeholder="Buscar nome, telefone ou anúncio">
+        <div class="chips" id="chips">
+          <button class="chip ativo" data-f="todas">Todas</button>
+          <button class="chip" data-f="anuncio">Anúncio</button>
+          <button class="chip" data-f="organico">Orgânico</button>
+          <button class="chip" data-f="nao_lidas">Não lidas</button>
+          <button class="chip" data-f="pausado">Pausadas</button>
+        </div>
+      </div>
+      <div class="itens" id="itens"></div>
+    </section>
+    <section class="conversa" id="conversa">
+      <div class="placeholder">Escolha uma conversa.</div>
+    </section>
+  </main>
+</div>
+
+<script>
+const $ = (s, el = document) => el.querySelector(s);
+const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
+const PAUSA_MANUAL = 253402300799000;
+
+let estado = { filtro: 'todas', busca: '', jid: null, status: [], botAtivo: true, automacao: 'anuncio', ultimaQtd: 0, topoAtual: '' };
+
+async function api(caminho, corpo) {
+  const r = await fetch('/crm/api/' + caminho, corpo === undefined ? {} :
+    { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(corpo) });
+  if (r.status === 401) { location.reload(); throw new Error('login'); }
+  const j = await r.json();
+  if (!r.ok) throw new Error(j.erro || 'erro');
+  return j;
+}
+
+const nomeDe = (c) => c.nome || (c.telefone ? '+' + c.telefone : 'Sem nome');
+const pausado = (c) => c.pausado_ate > Date.now();
+function hora(ms) {
+  if (!ms) return '';
+  const d = new Date(ms), hoje = new Date();
+  return d.toDateString() === hoje.toDateString()
+    ? d.toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' })
+    : d.toLocaleDateString('pt-BR', { day: '2-digit', month: '2-digit' });
+}
+function textoPausa(c) {
+  if (!pausado(c)) return '';
+  if (c.pausado_ate >= PAUSA_MANUAL) return 'Bot pausado';
+  return 'Bot pausado até ' + new Date(c.pausado_ate).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+}
+const origemTxt = (c) => c.origem === 'anuncio' ? `Anúncio: ${c.anuncio_titulo || 'sem título'}` : 'Orgânico';
+
+// ---------- estado global ----------
+async function carregarEstado(corpo) {
+  const e = await api('estado', corpo);
+  Object.assign(estado, { botAtivo: e.botAtivo, status: e.status, automacao: e.automacao });
+  $('#global').classList.toggle('off', !e.botAtivo);
+  $('#global-txt').textContent = e.botAtivo ? 'Automação ligada' : 'Automação pausada';
+}
+$('#global').onclick = () => {
+  const msg = estado.botAtivo ? 'Pausar a automação para TODOS os clientes?' : 'Ligar a automação de novo?';
+  if (confirm(msg)) carregarEstado({ ativo: !estado.botAtivo });
+};
+
+// ---------- lista ----------
+async function carregarLista() {
+  const q = new URLSearchParams({ filtro: estado.filtro, q: estado.busca });
+  const lista = await api('conversas?' + q);
+  const itens = $('#itens');
+  if (!lista.length) { itens.innerHTML = '<div class="vazio">Nenhuma conversa.</div>'; return; }
+  itens.innerHTML = lista.map((c) => `
+    <button class="item ${c.jid === estado.jid ? 'sel' : ''}" data-jid="${esc(c.jid)}">
+      <div class="linha"><span class="nome">${esc(nomeDe(c))}</span><span class="hora">${hora(c.ultima_msg_em)}</span></div>
+      <div class="linha"><span class="previa">${esc(c.ultima_msg || '')}</span>${c.nao_lidas ? `<span class="naolidas">${c.nao_lidas}</span>` : ''}</div>
+      <div class="info">${esc([origemTxt(c), c.status, pausado(c) ? 'pausado' : ''].filter(Boolean).join(' · '))}</div>
+    </button>`).join('');
+}
+$('#itens').onclick = (e) => { const b = e.target.closest('.item'); if (b) abrir(b.dataset.jid); };
+$('#chips').onclick = (e) => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  document.querySelectorAll('.chip').forEach((x) => x.classList.toggle('ativo', x === b));
+  estado.filtro = b.dataset.f; carregarLista();
+};
+let tBusca;
+$('#busca').oninput = (e) => { clearTimeout(tBusca); tBusca = setTimeout(() => { estado.busca = e.target.value.trim(); carregarLista(); }, 250); };
+
+// ---------- conversa ----------
+function abrir(jid) {
+  estado.jid = jid; estado.ultimaQtd = 0; estado.topoAtual = '';
+  $('#main').classList.add('abrir');
+  $('#conversa').innerHTML = '<div class="placeholder">Carregando…</div>';
+  carregarConversa(true).then(carregarLista);
+}
+
+function renderTopo(c) {
+  const p = pausado(c);
+  const telefone = c.telefone ? `<a href="https://wa.me/${esc(c.telefone)}" target="_blank" rel="noopener">+${esc(c.telefone)}</a>` : '';
+  const automacaoVale = estado.automacao === 'todos' || c.origem === 'anuncio';
+  const anuncio = c.origem === 'anuncio'
+    ? `Anúncio: ${esc(c.anuncio_titulo || 'sem título')}${c.anuncio_url ? ` (<a href="${esc(c.anuncio_url)}" target="_blank" rel="noopener">abrir</a>)` : ''}`
+    : 'Orgânico · sem automação';
+  return `
+    <div class="topo">
+      <div class="topo-linha">
+        <button class="voltar" id="voltar" aria-label="Voltar">←</button>
+        <div class="quem">
+          <h2>${esc(nomeDe(c))}</h2>
+          <div class="sub">${[telefone, anuncio, p ? textoPausa(c) : ''].filter(Boolean).join(' · ')}</div>
+        </div>
+        <div class="acoes">
+          <select id="status">${estado.status.map((s) => `<option ${s === c.status ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select>
+          ${automacaoVale ? `<button class="btn ${p ? 'primario' : ''}" id="pausa">${p ? 'Retomar bot' : 'Pausar bot'}</button>` : ''}
+        </div>
+      </div>
+    </div>`;
+}
+
+function renderMsgs(msgs) {
+  let dia = '';
+  return msgs.map((m) => {
+    const d = new Date(m.criado_em).toLocaleDateString('pt-BR');
+    const sep = d !== dia ? `<div class="dia">${d}</div>` : '';
+    dia = d;
+    const quem = { bot: 'Bot · ', atendente: 'Atendente · ' }[m.autor] ?? '';
+    const corpo = m.tipo !== 'texto'
+      ? `<span class="midia">[${esc(m.tipo)}]</span>${m.texto ? ' ' + esc(m.texto) : ''}`
+      : esc(m.texto);
+    return `${sep}<div class="msg ${esc(m.autor)}">${corpo}<div class="meta">${quem}${new Date(m.criado_em).toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' })}</div></div>`;
+  }).join('');
+}
+
+const assinaturaTopo = ({ nao_lidas, ultima_msg, ultima_msg_em, visto_em, notas, ...resto }) => JSON.stringify(resto);
+
+async function carregarConversa(primeira) {
+  const jid = estado.jid;
+  if (!jid) return;
+  const { contato: c, mensagens } = await api('conversas/' + encodeURIComponent(jid));
+  if (jid !== estado.jid) return;
+
+  if (primeira) {
+    $('#conversa').innerHTML = `${renderTopo(c)}
+      <div class="msgs" id="msgs"></div>
+      <form class="resposta" id="form-resp">
+        <textarea id="txt" placeholder="Responder… (o bot pausa sozinho com este cliente)" rows="1"></textarea>
+        <button id="enviar">Enviar</button>
+      </form>`;
+    ligarTopo(c);
+    ligarResposta();
+  } else if (document.activeElement?.id !== 'status' && assinaturaTopo(c) !== estado.topoAtual) {
+    $('.topo').outerHTML = renderTopo(c);
+    ligarTopo(c);
+  }
+  estado.topoAtual = assinaturaTopo(c);
+
+  if (primeira || mensagens.length !== estado.ultimaQtd) {
+    const box = $('#msgs');
+    const noFim = primeira || box.scrollHeight - box.scrollTop - box.clientHeight < 80;
+    box.innerHTML = mensagens.length ? renderMsgs(mensagens) : '<div class="vazio">Sem mensagens.</div>';
+    if (noFim) box.scrollTop = box.scrollHeight;
+    estado.ultimaQtd = mensagens.length;
+  }
+}
+
+function ligarTopo(c) {
+  const url = 'conversas/' + encodeURIComponent(c.jid);
+  $('#voltar').onclick = () => { $('#main').classList.remove('abrir'); estado.jid = null; carregarLista(); };
+  $('#status').onchange = async (e) => { await api(url + '/status', { status: e.target.value }); carregarLista(); };
+  const pausa = $('#pausa');
+  if (pausa) pausa.onclick = async () => {
+    pausa.disabled = true;
+    await api(url + '/pausar', { pausado: !pausado(c) });
+    await carregarConversa(false); carregarLista();
+  };
+}
+
+function ligarResposta() {
+  const txt = $('#txt'), btn = $('#enviar');
+  txt.oninput = () => { txt.style.height = 'auto'; txt.style.height = Math.min(txt.scrollHeight, 140) + 'px'; };
+  txt.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey && !matchMedia('(max-width:760px)').matches) { e.preventDefault(); $('#form-resp').requestSubmit(); } };
+  $('#form-resp').onsubmit = async (e) => {
+    e.preventDefault();
+    const texto = txt.value.trim(); if (!texto) return;
+    btn.disabled = true;
+    try {
+      await api('conversas/' + encodeURIComponent(estado.jid) + '/enviar', { texto });
+      txt.value = ''; txt.style.height = '';
+      await carregarConversa(false); carregarLista();
+    } catch (err) { alert(err.message); }
+    btn.disabled = false; txt.focus();
+  };
+}
+
+// ---------- atualização automática ----------
+carregarEstado().then(carregarLista);
+setInterval(() => {
+  if (document.hidden) return;
+  carregarLista().catch(() => {});
+  carregarConversa(false).catch(() => {});
+}, 5000);
+</script>
+</body>
+</html>

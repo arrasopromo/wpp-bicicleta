@@ -1,0 +1,14 @@
+{
+  "name": "wpp-bicicleta",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Respostas automáticas no WhatsApp da Casa das Bicicletas via Evolution API",
+  "type": "module",
+  "engines": { "node": ">=22" },
+  "scripts": {
+    "start": "node --env-file-if-exists=.env server.js",
+    "dev": "node --env-file-if-exists=.env --watch server.js",
+    "webhook": "node --env-file-if-exists=.env scripts/set-webhook.js",
+    "testar": "node --env-file-if-exists=.env scripts/simular.js"
+  }
+}

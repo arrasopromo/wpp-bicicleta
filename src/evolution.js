@@ -1,0 +1,30 @@
+// Cliente mínimo da Evolution API v2.
+const { EVOLUTION_URL, EVOLUTION_APIKEY, EVOLUTION_INSTANCE, DRY_RUN } = process.env;
+
+// IDs das mensagens que nós mandamos — para não confundir com o atendente digitando no celular
+export const idsEnviados = new Set();
+
+async function chamar(caminho, corpo) {
+  if (DRY_RUN) {
+    console.log('[DRY_RUN]', caminho, JSON.stringify(corpo));
+    return { key: { id: `dry-${Date.now()}-${Math.random().toString(36).slice(2)}` } };
+  }
+  const res = await fetch(`${EVOLUTION_URL}${caminho}/${encodeURIComponent(EVOLUTION_INSTANCE)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: EVOLUTION_APIKEY },
+    body: JSON.stringify(corpo),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(`Evolution ${caminho} ${res.status}: ${JSON.stringify(json)}`);
+  if (json?.key?.id) {
+    idsEnviados.add(json.key.id);
+    if (idsEnviados.size > 5000) idsEnviados.delete(idsEnviados.values().next().value);
+  }
+  return json;
+}
+
+export const enviarTexto = (numero, text) =>
+  chamar('/message/sendText', { number: numero, text, delay: 800 });
+
+export const enviarMidia = (numero, { tipo, url, mimetype, fileName, caption }) =>
+  chamar('/message/sendMedia', { number: numero, mediatype: tipo, mimetype, media: url, fileName, caption });
