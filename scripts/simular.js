@@ -45,13 +45,18 @@ async function conversa(titulo, numero, falas) {
   logOriginal(`   (etapa=${c.etapa} perfil=${c.perfil} pausado=${c.pausado_ate > Date.now()})`);
 }
 
-await conversa('Roteiro da loja', '5531900000001', ['Olá, vi o anúncio', 'bicicleta', 'menina de 8 anos', '1', 'sim, gostei!']);
-await conversa('Quer aro 20 direto, não gostou', '5531900000011', ['oi', 'quero aro 20 masculina', '1', 'não muito']);
+await conversa('Roteiro da loja', '5531900000001', ['Olá, vi o anúncio', 'bicicleta', 'menina de 8 anos', 'sim, gostei!']);
+await conversa('Quer aro 20 direto, não gostou', '5531900000011', ['oi', 'quero aro 20 masculina', 'não muito']);
+await conversa('Aro sem gênero', '5531900000013', ['oi', 'tem aro 20?', 'feminina']);
+await conversa('Pede BMX', '5531900000014', ['oi', 'vocês tem bmx?']);
+await conversa('Pede free ride', '5531900000015', ['oi', 'quero ver a free ride']);
+await conversa('Mulher pede free ride', '5531900000016', ['oi', 'free ride feminina']);
+await conversa('Mulher aro 26 (sem fotos)', '5531900000017', ['oi', 'bike aro 26 feminina']);
 await conversa('Tudo numa frase, gostou', '5531900000002', ['Oi', 'quero uma bike pro meu filho de 4 anos', 'gostei, é pro meu filho mesmo']);
 await conversa('Pede outro aro depois', '5531900000012', ['oi', 'bike aro 24 menino', 'e a aro 26?']);
 await conversa('Por altura', '5531900000003', ['Boa tarde', 'bicicleta para minha esposa, ela tem 1,55']);
 await conversa('Só gênero, depois aro', '5531900000004', ['oi', 'bike masculina', '29']);
-await conversa('Adulto sem gênero', '5531900000005', ['olá', 'bike pra adulto', 'masculina', '3']);
+await conversa('Adulto sem gênero', '5531900000005', ['olá', 'bike pra adulto', 'masculina', '29']);
 await conversa('Pergunta endereço no meio', '5531900000006', ['oi', 'onde fica a loja?', 'bicicleta aro 12 menino']);
 await conversa('Manutenção', '5531900000007', ['oi', 'preciso arrumar o freio da minha bike']);
 await conversa('Peças', '5531900000008', ['oi', 'vocês tem capacete?']);

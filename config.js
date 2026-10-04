@@ -45,12 +45,19 @@ export const config = {
     return `Para ${para}, o ideal é *aro ${aros.join(' ou ')}*.`;
   },
 
-  escolhaModelo: (lista) => ['Temos estas opções:', '', lista, '', 'Qual você quer ver? Responda com o *número*.'].join('\n'),
+  perguntaQualAro: (aros) => `Prefere *aro ${aros.join('* ou *aro ')}*?`,
+
+  // "aro 26 feminina", "BMX", "aro 20 masculina"
+  descrever: ({ genero, estilo }, aros) => [
+    estilo ? estilo.toUpperCase() : null,
+    aros.length ? `aro ${aros.join(' / ')}` : null,
+    genero === 'F' ? 'feminina' : genero === 'M' ? 'masculina' : null,
+  ].filter(Boolean).join(' '),
 
   // Depois da foto + vídeo da bike destaque
   gostou: 'Gostou desse modelo? 😊',
 
-  semFotos: (aros) => `No momento não tenho as fotos do *aro ${aros.join(' / ')}* aqui, mas um atendente já vai te mostrar as opções. 🙋`,
+  semFotos: (descricao) => `No momento não tenho as fotos da *${descricao}* aqui, mas um atendente já vai te mostrar as opções. 🙋`,
 
   endereco: [
     '📍 *Endereço:* [PREENCHER]',
@@ -71,5 +78,4 @@ export const config = {
 
   naoEntendi: 'Não entendi muito bem 😅 Você procura *bicicleta*, *peças/acessórios* ou *manutenção*?',
   naoEntendiAro: 'Me diz o *aro* (12, 16, 20, 24, 26 ou 29) ou a *idade* de quem vai usar.',
-  naoEntendiEscolha: 'Responda com o *número* da opção, ou me diga outro aro.',
 };

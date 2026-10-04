@@ -32,6 +32,10 @@ export function entender(texto) {
   const m = RE.masculino.test(t);
   if (f !== m) r.genero = f ? 'F' : 'M';
 
+  // estilos especiais: só aparecem quando o cliente pede
+  if (/\bbmx\b/.test(t)) r.estilo = 'bmx';
+  else if (/free ?ride/.test(t)) r.estilo = 'free ride';
+
   // aro: "aro 20", "aro20"
   const aro = /\baro\s*(\d{2})\b/.exec(t);
   if (aro && AROS.includes(Number(aro[1]))) r.aro = Number(aro[1]);
@@ -52,7 +56,7 @@ export function entender(texto) {
   const numero = /^\D{0,12}?(\d{1,3})\D{0,12}$/.exec(t);
   if (numero && !r.idade && !r.altura && !r.aro) r.numero = Number(numero[1]);
 
-  r.temPerfil = !!(r.genero || r.idade != null || r.altura || r.aro);
+  r.temPerfil = !!(r.genero || r.idade != null || r.altura || r.aro || r.estilo);
   return r;
 }
 

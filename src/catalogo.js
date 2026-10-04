@@ -38,9 +38,11 @@ export function carregarCatalogo(dir) {
       const fotos = destaque.length ? destaque : arquivos.filter((a) => a.tipo === 'image').slice(0, 1);
       const envio = [...fotos.filter((a) => a.tipo === 'image'), ...fotos.filter((a) => a.tipo === 'video')];
       const aro = Number(/aro\s*(\d+)/i.exec(d.name)?.[1]) || null;
-      // F/M pelo nome da pasta; BMX, Free Ride e sem gênero valem para os dois
-      const tipo = /\bfem/i.test(d.name) ? 'F' : /\bmasc/i.test(d.name) ? 'M' : null;
-      return { pasta: d.name, nome: nomeBonito(d.name), aro, tipo, arquivos, envio };
+      // F/M pelo nome da pasta (Free Ride é masculina); BMX e sem gênero valem para os dois
+      const tipo = /\bfem/i.test(d.name) ? 'F' : /\bmasc|free ?ride/i.test(d.name) ? 'M' : null;
+      // BMX e Free Ride só são oferecidas quando o cliente pede por elas
+      const estilo = /bmx/i.test(d.name) ? 'bmx' : /free ?ride/i.test(d.name) ? 'free ride' : null;
+      return { pasta: d.name, nome: nomeBonito(d.name), aro, tipo, estilo, arquivos, envio };
     })
     .filter((b) => b.arquivos.length)
     .sort((a, b) => a.pasta.localeCompare(b.pasta, 'pt-BR', { numeric: true }));

@@ -120,14 +120,15 @@ export function criarBot({ catalogo, publicUrl }) {
         { tipo: arq.tipo === 'video' ? 'video' : 'imagem', texto: `${bike.nome} — ${arq.nome}` });
     }
     await mandar(jid, config.gostou);
-    salvar(jid, 'gostou', { ...perfil, opcoes: undefined, tentativas: 0, viu: bike.nome });
+    salvar(jid, 'gostou', { ...perfil, tentativas: 0, viu: bike.nome });
   }
 
-  // Com o que já sabemos do cliente, decide: perguntar, recomendar ou mandar fotos
+  // Com o que já sabemos do cliente, decide: perguntar, recomendar ou mandar a bike.
+  // Só manda o que o cliente pediu: BMX/Free Ride só se pedir, e nunca bike do outro gênero.
   async function fluxoBicicleta(jid, c, perfil) {
     const aros = perfil.aro ? [perfil.aro] : arosPara(perfil);
 
-    if (!aros.length) {
+    if (!aros.length && !perfil.estilo) {
       if (!perfil.genero) {
         await mandar(jid, config.perguntaPerfil);
         return salvar(jid, 'perfil', perfil);
@@ -136,31 +137,30 @@ export function criarBot({ catalogo, publicUrl }) {
       return salvar(jid, 'aro', perfil);
     }
 
-    const recomendacao = perfil.aro || perfil.recomendou ? '' : config.recomendacao(perfil, aros);
-    const opcoes = catalogo().filter((b) => aros.includes(b.aro));
-    if (!opcoes.length) {
-      if (recomendacao) await mandar(jid, recomendacao);
-      return chamarAtendente(jid, c, config.semFotos(aros));
-    }
+    const recomendacao = perfil.aro || perfil.recomendou || !aros.length ? '' : config.recomendacao(perfil, aros);
+    const salvarRecomendou = (etapa, extra = {}) => salvar(jid, etapa, { ...perfil, ...extra, recomendou: true });
 
-    let lista = opcoes;
-    if (perfil.genero) {
-      const doGenero = opcoes.filter((b) => b.tipo === perfil.genero || b.tipo === null);
-      if (doGenero.length) lista = doGenero;
-    } else if (opcoes.some((b) => b.tipo)) {
-      // tem versão masculina/feminina: pergunta antes de listar
+    let opcoes = catalogo().filter((b) =>
+      (perfil.estilo ? b.estilo === perfil.estilo : !b.estilo) && (!aros.length || aros.includes(b.aro)));
+
+    // Pediu BMX/Free Ride pelo nome: manda direto, sem perguntar gênero
+    if (!perfil.genero && !perfil.estilo && opcoes.some((b) => b.tipo)) {
       if (recomendacao) await mandar(jid, recomendacao);
       await mandar(jid, config.perguntaGenero);
-      return salvar(jid, 'perfil', {
-        ...perfil, aro: perfil.aro ?? (aros.length === 1 ? aros[0] : undefined), recomendou: !!recomendacao,
-      });
+      return salvarRecomendou('perfil', { aro: perfil.aro ?? (aros.length === 1 ? aros[0] : undefined) });
     }
+    if (perfil.genero) opcoes = opcoes.filter((b) => b.tipo === perfil.genero || b.tipo === null);
 
     if (recomendacao) await mandar(jid, recomendacao);
-    if (lista.length === 1) return enviarBicicleta(jid, lista[0], perfil);
+    if (!opcoes.length) return chamarAtendente(jid, c, config.semFotos(config.descrever(perfil, aros)));
 
-    await mandar(jid, config.escolhaModelo(lista.map((b, i) => `*${i + 1}* - ${b.nome}`).join('\n')));
-    salvar(jid, 'escolha', { ...perfil, opcoes: lista.map((b) => b.pasta) });
+    // Ainda sobrou mais de um aro (adulto: 26 ou 29) → cliente escolhe
+    const arosDisponiveis = [...new Set(opcoes.map((b) => b.aro))].sort((a, b) => a - b);
+    if (arosDisponiveis.length > 1) {
+      await mandar(jid, config.perguntaQualAro(arosDisponiveis));
+      return salvarRecomendou('aro');
+    }
+    return enviarBicicleta(jid, opcoes[0], perfil);
   }
 
   // Não entendeu: tenta de novo uma vez, na segunda chama o atendente
@@ -219,12 +219,14 @@ export function criarBot({ catalogo, publicUrl }) {
 
     const e = entender(ehTeste ? '' : texto);
     let perfil = novaConversa ? {} : lerPerfil(c);
-    for (const k of ['genero', 'idade', 'altura', 'aro']) if (e[k] != null) perfil[k] = e[k];
+    for (const k of ['genero', 'idade', 'altura', 'aro', 'estilo']) if (e[k] != null) perfil[k] = e[k];
     // idade/altura nova vale mais que um aro escolhido antes
     if ((e.idade != null || e.altura) && !e.aro) {
       delete perfil.aro;
       delete perfil.recomendou;
     }
+    // pediu outro tamanho sem falar de BMX/Free Ride → volta para as bikes comuns
+    if ((e.aro || e.idade != null || e.altura) && !e.estilo) delete perfil.estilo;
 
     // Foto, áudio, vídeo do cliente: sem IA não dá para entender → pessoa
     if (tipo !== 'texto' && !texto) return chamarAtendente(jid, c, config.midiaDoCliente);
@@ -272,14 +274,6 @@ export function criarBot({ catalogo, publicUrl }) {
       case 'aro':
         if (AROS.includes(e.numero)) return fluxoBicicleta(jid, c, { ...perfil, aro: e.numero });
         return naoEntendeu(jid, c, perfil, config.naoEntendiAro);
-
-      case 'escolha': {
-        const pasta = perfil.opcoes?.[e.numero - 1];
-        const bike = pasta && catalogo().find((b) => b.pasta === pasta);
-        if (bike) return enviarBicicleta(jid, bike, perfil);
-        if (AROS.includes(e.numero)) return fluxoBicicleta(jid, c, { ...perfil, aro: e.numero });
-        return naoEntendeu(jid, c, perfil, config.naoEntendiEscolha);
-      }
 
       default:
         return naoEntendeu(jid, c, perfil, config.naoEntendi);
