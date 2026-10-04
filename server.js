@@ -10,7 +10,7 @@ import {
 } from './src/db.js';
 import { config } from './config.js';
 
-const { PORT = 3000, PUBLIC_URL, WEBHOOK_TOKEN, CRM_SENHA, MEDIA_DIR = './midia' } = process.env;
+const { PORT = 5000, PUBLIC_URL, WEBHOOK_TOKEN, CRM_SENHA, MEDIA_DIR = './midia' } = process.env;
 for (const v of ['EVOLUTION_URL', 'EVOLUTION_APIKEY', 'EVOLUTION_INSTANCE', 'PUBLIC_URL', 'WEBHOOK_TOKEN', 'CRM_SENHA']) {
   if (!process.env[v]) throw new Error(`Falta ${v} no .env`);
 }
