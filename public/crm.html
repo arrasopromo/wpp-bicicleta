@@ -12,6 +12,11 @@
     --acc:#18181b; --acc-txt:#fff; --ponto-on:#22c55e; --ponto-off:#a1a1aa;
     --cli:#fff; --nos:#f0f0f2;
     --ads-bg:#ffedd5; --ads-txt:#c2410c;
+    --st-novo-bg:#fff; --st-novo-txt:#3f3f46; --st-novo-borda:#d4d4d8;
+    --st-atend-bg:#fef9c3; --st-atend-txt:#854d0e;
+    --st-aguard-bg:#dbeafe; --st-aguard-txt:#1d4ed8;
+    --st-vendido-bg:#dcfce7; --st-vendido-txt:#15803d;
+    --st-perdido-bg:#fee2e2; --st-perdido-txt:#b91c1c;
   }
   @media (prefers-color-scheme: dark) {
     :root {
@@ -19,6 +24,11 @@
       --acc:#f4f4f5; --acc-txt:#18181b; --ponto-off:#52525b;
       --cli:#18181b; --nos:#26262a;
       --ads-bg:#431c06; --ads-txt:#fb923c;
+      --st-novo-bg:#f4f4f5; --st-novo-txt:#18181b; --st-novo-borda:#f4f4f5;
+      --st-atend-bg:#422006; --st-atend-txt:#facc15;
+      --st-aguard-bg:#172554; --st-aguard-txt:#60a5fa;
+      --st-vendido-bg:#052e16; --st-vendido-txt:#4ade80;
+      --st-perdido-bg:#450a0a; --st-perdido-txt:#f87171;
     }
   }
   * { box-sizing:border-box; }
@@ -44,8 +54,17 @@
   .filtros input:focus { border-color:var(--sub); }
   .chips { display:flex; gap:4px; overflow-x:auto; scrollbar-width:none; }
   .chips::-webkit-scrollbar { display:none; }
-  .ads { display:inline-block; vertical-align:1px; margin-right:5px; padding:1px 7px; border-radius:999px;
-         background:var(--ads-bg); color:var(--ads-txt); font-size:11px; font-weight:600; line-height:16px; }
+  .ads, .st { display:inline-block; vertical-align:1px; padding:1px 7px; border-radius:999px;
+              font-size:11px; font-weight:600; line-height:16px; border:1px solid transparent; }
+  .ads { margin-right:5px; background:var(--ads-bg); color:var(--ads-txt); }
+  /* Status: novo branco, em atendimento amarelo, aguardando azul, vendido verde, perdido vermelho */
+  .st-novo { background:var(--st-novo-bg); color:var(--st-novo-txt); border-color:var(--st-novo-borda); }
+  .st-atend { background:var(--st-atend-bg); color:var(--st-atend-txt); }
+  .st-aguard { background:var(--st-aguard-bg); color:var(--st-aguard-txt); }
+  .st-vendido { background:var(--st-vendido-bg); color:var(--st-vendido-txt); }
+  .st-perdido { background:var(--st-perdido-bg); color:var(--st-perdido-txt); }
+  select.st { font-size:13px; padding:6px 8px; border-radius:8px; vertical-align:middle; cursor:pointer; }
+  select.st option { background:var(--card); color:var(--txt); }
   .chip { padding:4px 10px; border-radius:6px; border:0; background:none; font-size:13px; color:var(--sub); white-space:nowrap; }
   .chip:hover { background:var(--hover); }
   .chip.ativo { background:var(--sel); color:var(--txt); font-weight:600; }
@@ -180,8 +199,11 @@ function textoPausa(c) {
 }
 // Etiqueta colorida para conversa vinda de anúncio (já escapada)
 const origemHtml = (c) => c.origem === 'anuncio'
-  ? `<span class="ads">Anúncio</span>${esc(c.anuncio_titulo || 'sem título')}`
+  ? `<span class="ads">Anúncio</span>${esc(c.anuncio_titulo || '')}`
   : 'Orgânico';
+const CLASSE_STATUS = { 'novo': 'st-novo', 'em atendimento': 'st-atend', 'aguardando cliente': 'st-aguard', 'vendido': 'st-vendido', 'perdido': 'st-perdido' };
+const classeStatus = (s) => `st ${CLASSE_STATUS[s] ?? 'st-novo'}`;
+const statusHtml = (s) => `<span class="${classeStatus(s)}">${esc(s)}</span>`;
 
 // ---------- estado global ----------
 async function carregarEstado(corpo) {
@@ -205,7 +227,7 @@ async function carregarLista() {
     <button class="item ${c.jid === estado.jid ? 'sel' : ''}" data-jid="${esc(c.jid)}">
       <div class="linha"><span class="nome">${esc(nomeDe(c))}</span><span class="hora">${hora(c.ultima_msg_em)}</span></div>
       <div class="linha"><span class="previa">${esc(c.ultima_msg || '')}</span>${c.nao_lidas ? `<span class="naolidas">${c.nao_lidas}</span>` : ''}</div>
-      <div class="info">${[origemHtml(c), esc(c.status), pausado(c) ? 'pausado' : ''].filter(Boolean).join(' · ')}</div>
+      <div class="info">${statusHtml(c.status)} ${[origemHtml(c), pausado(c) ? 'pausado' : ''].filter(Boolean).join(' · ')}</div>
     </button>`).join('');
 }
 $('#itens').onclick = (e) => { const b = e.target.closest('.item'); if (b) abrir(b.dataset.jid); };
@@ -249,7 +271,7 @@ function renderTopo(c) {
           <div class="sub">${[telefone, anuncio, p ? textoPausa(c) : ''].filter(Boolean).join(' · ')}</div>
         </div>
         <div class="acoes">
-          <select id="status">${estado.status.map((s) => `<option ${s === c.status ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select>
+          <select id="status" class="${classeStatus(c.status)}">${estado.status.map((s) => `<option ${s === c.status ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select>
           ${automacaoVale ? `<button class="btn ${p ? 'primario' : ''}" id="pausa">${p ? 'Retomar bot' : 'Pausar bot'}</button>` : ''}
         </div>
       </div>
@@ -305,7 +327,10 @@ async function carregarConversa(primeira) {
 function ligarTopo(c) {
   const url = 'conversas/' + encodeURIComponent(c.jid);
   $('#voltar').onclick = () => (history.state?.conversa ? history.back() : fecharConversa());
-  $('#status').onchange = async (e) => { await api(url + '/status', { status: e.target.value }); carregarLista(); };
+  $('#status').onchange = async (e) => {
+    e.target.className = classeStatus(e.target.value);
+    await api(url + '/status', { status: e.target.value }); carregarLista();
+  };
   const pausa = $('#pausa');
   if (pausa) pausa.onclick = async () => {
     pausa.disabled = true;
