@@ -2,7 +2,9 @@
 <html lang="pt-BR">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover">
+<meta name="theme-color" content="#ffffff" media="(prefers-color-scheme: light)">
+<meta name="theme-color" content="#18181b" media="(prefers-color-scheme: dark)">
 <title>CRM · Casa das Bicicletas</title>
 <style>
   :root {
@@ -18,7 +20,7 @@
     }
   }
   * { box-sizing:border-box; }
-  html, body { height:100%; }
+  html, body { height:100%; overflow-x:hidden; -webkit-text-size-adjust:100%; touch-action:manipulation; }
   body { margin:0; background:var(--bg); color:var(--txt); font:14px/1.45 system-ui, -apple-system, "Segoe UI", Roboto, sans-serif; }
   button, select, input, textarea { font:inherit; color:inherit; }
   button { cursor:pointer; }
@@ -31,7 +33,9 @@
   .global.off .ponto { background:var(--ponto-off); }
   header a { color:var(--sub); font-size:13px; text-decoration:none; }
 
-  main { display:grid; grid-template-columns:minmax(280px, 340px) 1fr; min-height:0; }
+  /* minmax(0, …) e min-width:0: texto longo sem quebra (nowrap) não pode alargar a coluna */
+  main { display:grid; grid-template-columns:minmax(280px, 340px) minmax(0, 1fr); min-height:0; }
+  .lista, .conversa, .item { min-width:0; }
   .lista { border-right:1px solid var(--borda); background:var(--card); display:flex; flex-direction:column; min-height:0; }
   .filtros { padding:12px; display:flex; flex-direction:column; gap:10px; border-bottom:1px solid var(--borda); }
   .filtros input { padding:8px 11px; border-radius:8px; border:1px solid var(--borda); background:var(--bg); outline:none; }
@@ -82,14 +86,33 @@
   .placeholder { flex:1; display:grid; place-items:center; color:var(--sub); padding:20px; text-align:center; }
 
   @media (max-width: 760px) {
-    main { grid-template-columns:1fr; }
+    /* 16px evita o zoom automático do iPhone ao tocar nos campos */
+    .filtros input, .resposta textarea, .acoes select { font-size:16px; }
+    header { padding:10px 12px; padding-top:calc(10px + env(safe-area-inset-top)); gap:10px; }
+    header h1 { font-size:15px; }
+    .global { padding:6px 10px; }
+    main { grid-template-columns:minmax(0, 1fr); }
     .lista { border-right:0; }
     main.abrir .lista { display:none; }
     main:not(.abrir) .conversa { display:none; }
-    .voltar { display:inline; }
-    .msg { max-width:86%; }
+    .filtros { padding:10px 12px; }
+    .chips { margin:0 -12px; padding:0 12px; scrollbar-width:none; }
+    .chips::-webkit-scrollbar { display:none; }
+    .chip { padding:7px 12px; }
+    .item { padding:14px 12px; }
+    .topo { padding:10px 12px; }
+    .topo-linha { gap:8px; }
+    .voltar { display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; margin-left:-6px; padding:0; }
+    .quem { flex:1 1 calc(100% - 44px); }
+    .topo .sub { font-size:12px; }
     .acoes { width:100%; }
-    .acoes select { flex:1; }
+    .acoes select { flex:1; min-width:0; padding:8px; }
+    .btn { padding:8px 14px; }
+    .msgs { padding:12px 10px; }
+    .msg { max-width:86%; }
+    .resposta { padding:8px 10px; padding-bottom:calc(8px + env(safe-area-inset-bottom)); }
+    .resposta textarea { height:42px; }
+    .resposta button { padding:0 14px; }
   }
 </style>
 </head>
@@ -187,7 +210,15 @@ let tBusca;
 $('#busca').oninput = (e) => { clearTimeout(tBusca); tBusca = setTimeout(() => { estado.busca = e.target.value.trim(); carregarLista(); }, 250); };
 
 // ---------- conversa ----------
+// No celular a conversa ocupa a tela: o botão voltar do aparelho volta para a lista
+const celular = () => matchMedia('(max-width:760px)').matches;
+function fecharConversa() {
+  $('#main').classList.remove('abrir'); estado.jid = null; carregarLista();
+}
+addEventListener('popstate', () => { if (estado.jid) fecharConversa(); });
+
 function abrir(jid) {
+  if (celular() && !estado.jid) history.pushState({ conversa: true }, '');
   estado.jid = jid; estado.ultimaQtd = 0; estado.topoAtual = '';
   $('#main').classList.add('abrir');
   $('#conversa').innerHTML = '<div class="placeholder">Carregando…</div>';
@@ -243,7 +274,7 @@ async function carregarConversa(primeira) {
     $('#conversa').innerHTML = `${renderTopo(c)}
       <div class="msgs" id="msgs"></div>
       <form class="resposta" id="form-resp">
-        <textarea id="txt" placeholder="Responder… (o bot pausa sozinho com este cliente)" rows="1"></textarea>
+        <textarea id="txt" placeholder="Responder…" title="Ao responder, o bot pausa sozinho com este cliente" rows="1"></textarea>
         <button id="enviar">Enviar</button>
       </form>`;
     ligarTopo(c);
@@ -265,7 +296,7 @@ async function carregarConversa(primeira) {
 
 function ligarTopo(c) {
   const url = 'conversas/' + encodeURIComponent(c.jid);
-  $('#voltar').onclick = () => { $('#main').classList.remove('abrir'); estado.jid = null; carregarLista(); };
+  $('#voltar').onclick = () => (history.state?.conversa ? history.back() : fecharConversa());
   $('#status').onchange = async (e) => { await api(url + '/status', { status: e.target.value }); carregarLista(); };
   const pausa = $('#pausa');
   if (pausa) pausa.onclick = async () => {
@@ -278,7 +309,7 @@ function ligarTopo(c) {
 function ligarResposta() {
   const txt = $('#txt'), btn = $('#enviar');
   txt.oninput = () => { txt.style.height = 'auto'; txt.style.height = Math.min(txt.scrollHeight, 140) + 'px'; };
-  txt.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey && !matchMedia('(max-width:760px)').matches) { e.preventDefault(); $('#form-resp').requestSubmit(); } };
+  txt.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey && !celular()) { e.preventDefault(); $('#form-resp').requestSubmit(); } };
   $('#form-resp').onsubmit = async (e) => {
     e.preventDefault();
     const texto = txt.value.trim(); if (!texto) return;
