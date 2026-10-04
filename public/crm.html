@@ -11,12 +11,14 @@
     --bg:#f7f7f8; --card:#fff; --txt:#18181b; --sub:#71717a; --borda:#e4e4e7; --hover:#f4f4f5; --sel:#f0f0f2;
     --acc:#18181b; --acc-txt:#fff; --ponto-on:#22c55e; --ponto-off:#a1a1aa;
     --cli:#fff; --nos:#f0f0f2;
+    --ads-bg:#ffedd5; --ads-txt:#c2410c;
   }
   @media (prefers-color-scheme: dark) {
     :root {
       --bg:#0f0f11; --card:#18181b; --txt:#f4f4f5; --sub:#a1a1aa; --borda:#27272a; --hover:#1f1f23; --sel:#242428;
       --acc:#f4f4f5; --acc-txt:#18181b; --ponto-off:#52525b;
       --cli:#18181b; --nos:#26262a;
+      --ads-bg:#431c06; --ads-txt:#fb923c;
     }
   }
   * { box-sizing:border-box; }
@@ -40,7 +42,10 @@
   .filtros { padding:12px; display:flex; flex-direction:column; gap:10px; border-bottom:1px solid var(--borda); }
   .filtros input { padding:8px 11px; border-radius:8px; border:1px solid var(--borda); background:var(--bg); outline:none; }
   .filtros input:focus { border-color:var(--sub); }
-  .chips { display:flex; gap:4px; overflow-x:auto; }
+  .chips { display:flex; gap:4px; overflow-x:auto; scrollbar-width:none; }
+  .chips::-webkit-scrollbar { display:none; }
+  .ads { display:inline-block; vertical-align:1px; margin-right:5px; padding:1px 7px; border-radius:999px;
+         background:var(--ads-bg); color:var(--ads-txt); font-size:11px; font-weight:600; line-height:16px; }
   .chip { padding:4px 10px; border-radius:6px; border:0; background:none; font-size:13px; color:var(--sub); white-space:nowrap; }
   .chip:hover { background:var(--hover); }
   .chip.ativo { background:var(--sel); color:var(--txt); font-weight:600; }
@@ -173,7 +178,10 @@ function textoPausa(c) {
   if (c.pausado_ate >= PAUSA_MANUAL) return 'Bot pausado';
   return 'Bot pausado até ' + new Date(c.pausado_ate).toLocaleString('pt-BR', { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
 }
-const origemTxt = (c) => c.origem === 'anuncio' ? `Anúncio: ${c.anuncio_titulo || 'sem título'}` : 'Orgânico';
+// Etiqueta colorida para conversa vinda de anúncio (já escapada)
+const origemHtml = (c) => c.origem === 'anuncio'
+  ? `<span class="ads">Anúncio</span>${esc(c.anuncio_titulo || 'sem título')}`
+  : 'Orgânico';
 
 // ---------- estado global ----------
 async function carregarEstado(corpo) {
@@ -197,7 +205,7 @@ async function carregarLista() {
     <button class="item ${c.jid === estado.jid ? 'sel' : ''}" data-jid="${esc(c.jid)}">
       <div class="linha"><span class="nome">${esc(nomeDe(c))}</span><span class="hora">${hora(c.ultima_msg_em)}</span></div>
       <div class="linha"><span class="previa">${esc(c.ultima_msg || '')}</span>${c.nao_lidas ? `<span class="naolidas">${c.nao_lidas}</span>` : ''}</div>
-      <div class="info">${esc([origemTxt(c), c.status, pausado(c) ? 'pausado' : ''].filter(Boolean).join(' · '))}</div>
+      <div class="info">${[origemHtml(c), esc(c.status), pausado(c) ? 'pausado' : ''].filter(Boolean).join(' · ')}</div>
     </button>`).join('');
 }
 $('#itens').onclick = (e) => { const b = e.target.closest('.item'); if (b) abrir(b.dataset.jid); };
@@ -230,7 +238,7 @@ function renderTopo(c) {
   const telefone = c.telefone ? `<a href="https://wa.me/${esc(c.telefone)}" target="_blank" rel="noopener">+${esc(c.telefone)}</a>` : '';
   const automacaoVale = estado.automacao === 'todos' || c.origem === 'anuncio';
   const anuncio = c.origem === 'anuncio'
-    ? `Anúncio: ${esc(c.anuncio_titulo || 'sem título')}${c.anuncio_url ? ` (<a href="${esc(c.anuncio_url)}" target="_blank" rel="noopener">abrir</a>)` : ''}`
+    ? `${origemHtml(c)}${c.anuncio_url ? ` (<a href="${esc(c.anuncio_url)}" target="_blank" rel="noopener">abrir</a>)` : ''}`
     : 'Orgânico · sem automação';
   return `
     <div class="topo">
