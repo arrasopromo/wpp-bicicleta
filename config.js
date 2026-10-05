@@ -6,6 +6,8 @@ export const config = {
   automacao: 'anuncio',
   // Depois de quanto tempo parado o cliente recebe a saudação de novo
   sessaoMinutos: 30,
+  // A saudação só é repetida se a última foi enviada há mais que isso
+  saudacaoHoras: 24,
   // Quanto tempo o bot fica calado depois que um atendente assume a conversa
   pausaHoras: 12,
   // false = ao passar para a equipe o bot não avisa o cliente (só pausa e marca "aguardando humano")

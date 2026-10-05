@@ -466,9 +466,12 @@ export function criarBot({ catalogo, publicUrl }) {
     if (tipo !== 'texto' && !texto) return chamarAtendente(jid, c, config.midiaDoCliente);
 
     if (novaConversa) {
-      await mandar(jid, config.saudacao);
+      // Cliente voltou depois de um tempo no mesmo dia: não repete o "Olá. Seja bem-vindo(a)…"
+      const saudouRecente = !ehTeste && mensagensDe(jid).some((m) =>
+        m.autor === 'bot' && m.texto === config.saudacao && Date.now() - m.criado_em < config.saudacaoHoras * 3600_000);
+      if (!saudouRecente) await mandar(jid, config.saudacao);
       const jaPediuAlgo = e.temPerfil || e.bicicleta || e.preco || e.pecas || e.manutencao || e.endereco || e.entrega || e.pagamento || e.atendente;
-      if (!jaPediuAlgo) return salvar(jid, 'interesse', perfil); // "Olá, tenho interesse…": só a saudação
+      if (!jaPediuAlgo && !saudouRecente) return salvar(jid, 'interesse', perfil); // "Olá, tenho interesse…": só a saudação
       if (iaAtiva() && await atenderComIA(jid, perfil, e)) return;
       // A 1ª mensagem já diz o que quer ("quero bike aro 20 pra menina")? Segue direto
       if (e.temPerfil && !e.pecas && !e.manutencao) return fluxoBicicleta(jid, contato(jid), perfil, e);
