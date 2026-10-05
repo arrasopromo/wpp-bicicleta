@@ -1,5 +1,5 @@
 // Textos do bot. Edite à vontade — *negrito* e _itálico_ funcionam no WhatsApp.
-// TODO: preencher endereço, horário e pagamento com os dados reais da loja.
+// TODO: preencher as formas de pagamento.
 
 export const config = {
   // 'anuncio' = automação só para quem chegou por anúncio; 'todos' = para qualquer conversa
@@ -55,31 +55,31 @@ export const config = {
   ].filter(Boolean).join(' '),
 
   // Depois da foto + vídeo da bike destaque
-  gostou: 'Gostou desse modelo? 😊',
+  gostou: 'Gostou desse modelo?',
 
-  semFotos: (descricao) => `No momento não tenho as fotos da *${descricao}* aqui, mas um atendente já vai te mostrar as opções. 🙋`,
+  semFotos: (descricao) => `No momento não tenho as fotos da *${descricao}* aqui, mas um atendente já vai te mostrar as opções.`,
 
   endereco: [
-    '📍 *Endereço:* R. Joaquim Fonseca Ferreira, 44 - Centro, Vespasiano - MG, 33200-000',
+    '*Endereço:* R. Joaquim Fonseca Ferreira, 44 - Centro, Vespasiano - MG, 33200-000',
     '',
-    '🕘 *Horário:*',
+    '*Horário:*',
     'Segunda a sexta: 8h às 18h',
     'Sábado: 8h às 15h',
     'Domingo: fechado',
   ].join('\n'),
 
-  pagamento: '💳 *Formas de pagamento:* [PREENCHER]',
+  pagamento: '*Formas de pagamento:* [PREENCHER]',
 
   // Quando o bot passa a conversa para uma pessoa (ele fica calado depois)
-  atendente: 'Certo! 🙋 Um atendente vai te responder aqui em instantes.',
-  interesse: 'Ótima escolha! 🙌 Um atendente já vai te passar valores e condições.',
-  outrosModelos: 'Sem problema! Temos outros modelos e cores. Um atendente já vai te mostrar as opções. 🙋',
-  preco: 'Os valores variam por modelo. Um atendente já vai te passar os preços e condições. 🙋',
-  pecas: 'Temos sim peças e acessórios! Me diz qual você procura que um atendente já te responde com disponibilidade e valor. 🙋',
-  manutencao: 'Fazemos manutenção sim! 🔧 Me conta o que a bike tem que um atendente já te responde.',
-  midiaDoCliente: 'Recebi! Um atendente já vai dar uma olhada e te responder. 🙋',
-  naoEntendiFinal: 'Vou chamar um atendente para te ajudar melhor. 🙋',
+  atendente: 'Certo! Um atendente vai te responder aqui em instantes.',
+  interesse: 'Ótima escolha! Um atendente já vai te passar valores e condições.',
+  outrosModelos: 'Sem problema! Temos outros modelos e cores. Um atendente já vai te mostrar as opções.',
+  preco: 'Os valores variam por modelo. Um atendente já vai te passar os preços e condições.',
+  pecas: 'Temos sim peças e acessórios! Me diz qual você procura que um atendente já te responde com disponibilidade e valor.',
+  manutencao: 'Fazemos manutenção sim! Me conta o que a bike tem que um atendente já te responde.',
+  midiaDoCliente: 'Recebi! Um atendente já vai dar uma olhada e te responder.',
+  naoEntendiFinal: 'Vou chamar um atendente para te ajudar melhor.',
 
-  naoEntendi: 'Não entendi muito bem 😅 Você procura *bicicleta*, *peças/acessórios* ou *manutenção*?',
+  naoEntendi: 'Não entendi muito bem Você procura *bicicleta*, *peças/acessórios* ou *manutenção*?',
   naoEntendiAro: 'Me diz o *aro* (12, 16, 20, 24, 26 ou 29) ou a *idade* de quem vai usar.',
 };
