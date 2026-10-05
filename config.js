@@ -60,8 +60,12 @@ export const config = {
   semFotos: (descricao) => `No momento não tenho as fotos da *${descricao}* aqui, mas um atendente já vai te mostrar as opções. 🙋`,
 
   endereco: [
-    '📍 *Endereço:* [PREENCHER]',
-    '🕘 *Horário:* [PREENCHER]',
+    '📍 *Endereço:* R. Joaquim Fonseca Ferreira, 44 - Centro, Vespasiano - MG, 33200-000',
+    '',
+    '🕘 *Horário:*',
+    'Segunda a sexta: 8h às 18h',
+    'Sábado: 8h às 15h',
+    'Domingo: fechado',
   ].join('\n'),
 
   pagamento: '💳 *Formas de pagamento:* [PREENCHER]',
