@@ -399,10 +399,10 @@ function abrir(jid) {
 function renderTopo(c) {
   const p = pausado(c);
   const telefone = c.telefone ? `<a href="https://wa.me/${esc(c.telefone)}" target="_blank" rel="noopener">+${esc(c.telefone)}</a>` : '';
-  const automacaoVale = estado.automacao === 'todos' || c.origem === 'anuncio';
+  const automacaoVale = estado.automacao === 'todos' || c.origem === 'anuncio' || c.bot_manual;
   const anuncio = c.origem === 'anuncio'
     ? `${origemHtml(c)}${c.anuncio_url ? ` (<a href="${esc(c.anuncio_url)}" target="_blank" rel="noopener">abrir</a>)` : ''}`
-    : 'Orgânico · sem automação';
+    : c.bot_manual ? 'Orgânico · bot iniciado' : 'Orgânico · bot desligado';
   return `
     <div class="topo">
       <div class="topo-linha">
@@ -417,7 +417,8 @@ function renderTopo(c) {
             <div class="st-pop" id="st-pop" hidden>${estado.status.map((s) =>
               `<button type="button" class="st-op" data-s="${esc(s)}">${statusHtml(s)}${s === c.status ? '<span class="ok">✓</span>' : ''}</button>`).join('')}</div>
           </div>
-          ${automacaoVale ? `<button class="btn ${p ? 'primario' : ''}" id="pausa" title="${p ? 'Reativa o bot; se o cliente ficou sem resposta, a IA responde agora' : 'O bot para de responder este cliente'}">${p ? 'Retomar bot' : 'Pausar bot'}</button>` : ''}
+          ${automacaoVale ? `<button class="btn ${p ? 'primario' : ''}" id="pausa" title="${p ? 'Reativa o bot; se o cliente ficou sem resposta, a IA responde agora' : 'O bot para de responder este cliente'}">${p ? 'Retomar bot' : 'Pausar bot'}</button>`
+            : `<button class="btn primario" id="iniciar" title="Liga o bot para este cliente; se ele ficou sem resposta, a IA responde agora">Iniciar bot</button>`}
         </div>
       </div>
     </div>`;
@@ -533,6 +534,12 @@ function ligarTopo(c) {
     await carregarConversa(false); carregarLista();
   };
   const pausa = $('#pausa');
+  const iniciar = $('#iniciar');
+  if (iniciar) iniciar.onclick = async () => {
+    iniciar.disabled = true; iniciar.textContent = 'Iniciando…';
+    try { await api(url + '/iniciar', {}); } catch (err) { alert(err.message); }
+    await carregarConversa(false); carregarLista();
+  };
   if (pausa) pausa.onclick = async () => {
     const retomando = pausado(c);
     pausa.disabled = true;

@@ -442,7 +442,8 @@ export function criarBot({ catalogo, publicUrl }) {
 
     const c = contato(jid);
     if (ajuste('bot_ativo', '1') !== '1') return;
-    if (config.automacao === 'anuncio' && c.origem !== 'anuncio') return;
+    // Orgânico só tem bot se alguém clicou em "Iniciar bot" no CRM
+    if (config.automacao === 'anuncio' && c.origem !== 'anuncio' && !c.bot_manual) return;
     if (Date.now() < c.pausado_ate) return;
 
     const novaConversa = anuncio || !c.etapa || Date.now() - c.visto_em > config.sessaoMinutos * 60_000;

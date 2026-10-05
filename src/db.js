@@ -43,6 +43,7 @@ db.exec(`
 for (const [tabela, col] of [
   ['contatos', 'perfil TEXT'], ['mensagens', 'midia_url TEXT'], ['mensagens', 'mimetype TEXT'],
   ['mensagens', 'cita_id TEXT'], ['mensagens', 'cita_texto TEXT'], // resposta citada (como no WhatsApp)
+  ['contatos', 'bot_manual INTEGER NOT NULL DEFAULT 0'], // orgânico com o bot ligado na mão ("Iniciar bot")
 ]) {
   try { db.exec(`ALTER TABLE ${tabela} ADD COLUMN ${col}`); } catch { /* já existe */ }
 }
@@ -54,7 +55,7 @@ export const STATUS = ['novo', 'aguardando humano', 'em atendimento', 'aguardand
 
 const CAMPOS = new Set([
   'nome', 'origem', 'anuncio_titulo', 'anuncio_texto', 'anuncio_url', 'anuncio_id', 'ctwa_clid', 'anuncio_em',
-  'status', 'notas', 'etapa', 'perfil', 'visto_em', 'pausado_ate', 'nao_lidas',
+  'status', 'notas', 'etapa', 'perfil', 'visto_em', 'pausado_ate', 'nao_lidas', 'bot_manual',
 ]);
 
 export const contato = (jid) => db.prepare('SELECT * FROM contatos WHERE jid = ?').get(jid);

@@ -127,6 +127,14 @@ async function apiCrm(req, res, caminho) {
 
   const corpo = await lerJson(req);
 
+  if (acao === 'iniciar') {
+    // Orgânico: liga o bot para este cliente e responde a mensagem pendente, se houver
+    const c = contato(jid);
+    atualizarContato(jid, { bot_manual: 1, pausado_ate: 0, ...(c.status === 'aguardando humano' ? { status: 'novo' } : {}) });
+    const respondeu = await processar.retomar(jid).catch((e) => { console.error('iniciar:', e.message); return false; });
+    return json(res, { contato: contato(jid), respondeu });
+  }
+
   if (acao === 'pausar') {
     if (corpo.pausado) {
       atualizarContato(jid, { pausado_ate: PAUSA_MANUAL });
