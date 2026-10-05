@@ -45,6 +45,8 @@ const roteiros = {
   conversa: ['Olá, tenho interesse e gostaria de mais informações', 'queria uma bicicleta pro meu sobrinho', 'ele tem uns 7 anos, é bem alto pra idade', 'gostei, quero essa'],
   duvidas: ['Olá, tenho interesse e gostaria de mais informações', 'vcs ficam aonde? abre sabado?', 'tem bike pra adulto? eu tenho 1,75', 'aro 29'],
   fora: ['Olá, tenho interesse e gostaria de mais informações', 'vocês fazem entrega em BH?'],
+  semgenero: ['Olá, tenho interesse e gostaria de mais informações', 'bicicleta aro 16', 'menina'],
+  semgenero2: ['Olá, tenho interesse e gostaria de mais informações', 'bicicleta aro 20', 'é pro meu filho'],
   depois: ['Olá, tenho interesse e gostaria de mais informações', 'aro 20 menino', 'vocês abrem domingo?', 'tem essa na cor azul?', 'oi?'],
 };
 const escolha = process.argv[2];

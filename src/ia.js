@@ -28,7 +28,8 @@ Horário: segunda a sexta 8h às 18h; sábado 8h às 15h; domingo fechado.
 
 ROTEIRO PARA BICICLETA (é o principal: quando o assunto é bicicleta, NUNCA chame o atendente antes de mostrar a bike)
 1. Descubra se é masculina ou feminina e a idade (ou altura, ou o aro que a pessoa quer).
-   Filho, sobrinho, neto, menino, marido = masculina. Filha, sobrinha, neta, menina, esposa = feminina. Se não souber, pergunte.
+   Filho, sobrinho, neto, menino, marido = masculina. Filha, sobrinha, neta, menina, esposa = feminina.
+   Se o cliente não disse o gênero, PERGUNTE antes de enviar. Nunca presuma. Ex.: "bicicleta aro 16" → "Temos sim, aro 16! É masculina ou feminina?".
 2. Aro pela idade/altura:
    Aro 12: a partir de 2 anos (85 a 100 cm) | Aro 16: 3 a 6 anos (100 a 120 cm) | Aro 20: a partir de 6 anos (115 a 135 cm)
    Aro 24: a partir de 10 anos (130 a 150 cm) | Aro 26: a partir de 12 anos, adolescentes e adultos (a partir de 1,50 m)
@@ -39,7 +40,7 @@ ROTEIRO PARA BICICLETA (é o principal: quando o assunto é bicicleta, NUNCA cha
    - "sim", "gostei", "quero", "quero essa", "pode ser", "vou levar", "como faço pra comprar": chame chamar_atendente.
    - Outra pergunta cuja resposta está nestas instruções (preço da tabela, endereço, horário, tamanho/aro): responda curto.
    - Pergunta cuja resposta NÃO está nestas instruções: chame chamar_atendente. Não tente adivinhar.
-   - Perguntou o valor de novo: responda o preço da ÚLTIMA bike enviada (só ela) pela tabela e termine com exatamente "Quer que um atendente finalize com você?". Se depois disso o cliente disser "sim", chame chamar_atendente.
+   - Perguntou o valor de novo: responda o preço da bike mais recente (só ela) pela tabela e termine com exatamente "Quer que um atendente finalize com você?". Se depois disso o cliente disser "sim", chame chamar_atendente.
    - Pediu outro aro/tamanho/gênero: siga o roteiro e envie a outra bike. Não reenvie uma bike que já foi enviada, a não ser que peçam.
    - "Não gostei": diga que há outros modelos e cores e chame chamar_atendente.
 
@@ -90,7 +91,7 @@ const ferramentas = (catalogo) => [
 // devolve { texto, acoes: [{ nome, args }] }
 export async function pensar({ catalogo, historico, enviadas = [] }) {
   const contexto = enviadas.length
-    ? `\n\nNESTA CONVERSA\nBikes já enviadas (foto, vídeo e preço): ${enviadas.join(', ')}. A última foi a ${enviadas.at(-1)}; "essa", "ela", "o valor" se referem a ela.`
+    ? `\n\nNESTA CONVERSA (informação interna, não repita estas palavras ao cliente)\nO cliente já recebeu foto, vídeo e preço de: ${enviadas.join(', ')}. A mais recente é a ${enviadas.at(-1)}; quando ele diz "essa" ou pergunta o valor, é dela. Responda naturalmente, ex.: "A *${enviadas.at(-1)}* sai ...".`
     : '';
   const res = await fetch('https://api.openai.com/v1/chat/completions', {
     method: 'POST',

@@ -239,8 +239,10 @@ export function criarBot({ catalogo, publicUrl }) {
       return false;
     }
     let atendente = r.acoes.find((a) => a.nome === 'chamar_atendente');
-    // Disse que vai chamar o atendente mas não acionou: aciona (senão a IA continuaria no chat)
-    if (!atendente && /atendente/i.test(r.texto)) atendente = { args: { mensagem: r.texto } };
+    // Disse que vai chamar o atendente mas não acionou: aciona (senão a IA continuaria no chat).
+    // Só frase afirmativa — "Quer que um atendente finalize com você?" é pergunta e não conta.
+    const avisouAtendente = /vou (chamar|pedir|passar)|atendente j[aá] vai|vai te (responder|atender)/i.test(r.texto) && !/\?\s*$/.test(r.texto);
+    if (!atendente && avisouAtendente) atendente = { args: { mensagem: r.texto } };
     // Trava: pedido de bicicleta antes de mostrar alguma bike não vai para o atendente — as regras assumem
     const sobreBike = (e.bicicleta || e.temPerfil) && !(e.atendente || e.pecas || e.manutencao || e.entrega || e.pagamento || e.preco);
     if (atendente && sobreBike && !lerPerfil(contato(jid)).viuPasta) {
@@ -249,6 +251,21 @@ export function criarBot({ catalogo, publicUrl }) {
     }
     const pedida = r.acoes.find((a) => a.nome === 'enviar_bike');
     let bike = pedida && catalogo().find((b) => b.pasta === pedida.args.pasta);
+
+    // Trava de gênero: bike masculina/feminina só depois que o cliente disse qual (BMX e unissex passam)
+    if (bike?.tipo && !bike.estilo) {
+      if (!perfil.genero) {
+        const pergunta = e.aro ? `${config.temSim(`aro ${e.aro}`)} É masculina ou feminina?` : config.perguntaGenero;
+        await mandar(jid, pergunta);
+        salvar(jid, 'ia', { ...perfil, aro: bike.aro });
+        return true;
+      }
+      if (bike.tipo !== perfil.genero) {
+        const certa = catalogo().find((b) => b.aro === bike.aro && b.tipo === perfil.genero && !b.estilo);
+        if (!certa) return chamarAtendente(jid, contato(jid), config.semFotos(config.descrever(perfil, [bike.aro]))).then(() => true);
+        bike = certa;
+      }
+    }
     const repetida = bike && bike.pasta === lerPerfil(contato(jid)).viuPasta;
     if (repetida) bike = null;
 
