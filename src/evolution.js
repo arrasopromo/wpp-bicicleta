@@ -28,3 +28,20 @@ export const enviarTexto = (numero, text) =>
 
 export const enviarMidia = (numero, { tipo, url, mimetype, fileName, caption }) =>
   chamar('/message/sendMedia', { number: numero, mediatype: tipo, mimetype, media: url, fileName, caption });
+
+// Mensagem de voz (a Evolution converte o áudio para o formato do WhatsApp)
+export const enviarAudio = (numero, url) =>
+  chamar('/message/sendWhatsAppAudio', { number: numero, audio: url, encoding: true });
+
+// Baixa a mídia de uma mensagem recebida: { base64, mimetype }
+export async function baixarMidia(waId) {
+  if (DRY_RUN) return null;
+  const res = await fetch(`${EVOLUTION_URL}/chat/getBase64FromMediaMessage/${encodeURIComponent(EVOLUTION_INSTANCE)}`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json', apikey: EVOLUTION_APIKEY },
+    body: JSON.stringify({ message: { key: { id: waId } }, convertToMp4: false }),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok || !json.base64) throw new Error(`Evolution getBase64 ${res.status}: ${JSON.stringify(json).slice(0, 200)}`);
+  return { base64: json.base64, mimetype: json.mimetype };
+}

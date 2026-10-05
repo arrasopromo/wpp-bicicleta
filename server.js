@@ -4,7 +4,8 @@ import { createReadStream, readFileSync, statSync } from 'node:fs';
 import { resolve, sep } from 'node:path';
 import { createHmac, timingSafeEqual } from 'node:crypto';
 import { carregarCatalogo, mimeDe } from './src/catalogo.js';
-import { criarBot, enviarTextoComo } from './src/bot.js';
+import { criarBot, enviarTextoComo, enviarArquivoComo } from './src/bot.js';
+import { DIR_RECEBIDOS, DIR_ENVIADOS, salvarUpload, servirArquivo } from './src/arquivos.js';
 import {
   listarConversas, mensagensDe, contato, atualizarContato, ajuste, salvarAjuste, STATUS, PAUSA_MANUAL,
 } from './src/db.js';
@@ -16,6 +17,7 @@ for (const v of ['EVOLUTION_URL', 'EVOLUTION_APIKEY', 'EVOLUTION_INSTANCE', 'PUB
 }
 
 const pastaMidia = resolve(MEDIA_DIR);
+const LIMITE_UPLOAD = 64 * 1048576; // o nginx precisa aceitar pelo menos isso (client_max_body_size)
 // Relê o catálogo a cada minuto, então dá para adicionar fotos sem reiniciar
 let cache = { em: 0, dados: [] };
 const catalogo = () => {
@@ -93,6 +95,32 @@ async function apiCrm(req, res, caminho) {
     return json(res, { contato: contato(jid), mensagens: mensagensDe(jid) });
   }
   if (req.method !== 'POST') return json(res, { erro: 'método' }, 405);
+
+  // Foto/vídeo/áudio/documento pelo painel: o corpo é o próprio arquivo
+  if (acao === 'arquivo') {
+    const u = new URL(req.url, 'http://x');
+    const mimetype = String(req.headers['content-type'] || 'application/octet-stream').split(';')[0];
+    let nome;
+    try {
+      nome = await salvarUpload(req, DIR_ENVIADOS, mimetype, LIMITE_UPLOAD);
+    } catch (e) {
+      return json(res, { erro: e.message }, 413);
+    }
+    try {
+      await enviarArquivoComo(jid, 'atendente', {
+        url: `${PUBLIC_URL.replace(/\/$/, '')}/arquivos/${nome}`,
+        mimetype,
+        nomeOriginal: (u.searchParams.get('nome') || nome).slice(0, 120),
+        legenda: (u.searchParams.get('legenda') || '').slice(0, 1000),
+      });
+    } catch (e) {
+      return json(res, { erro: `não enviou: ${e.message}` }, 502);
+    }
+    const c = contato(jid);
+    atualizarContato(jid, { pausado_ate: Math.max(c.pausado_ate, Date.now() + config.pausaHoras * 3600_000) });
+    return json(res, { contato: contato(jid) });
+  }
+
   const corpo = await lerJson(req);
 
   if (acao === 'pausar') {
@@ -131,6 +159,8 @@ createServer(async (req, res) => {
     }
 
     if (req.method === 'GET' && p.startsWith('/midia/')) return servirMidia(res, p.slice('/midia/'.length));
+    // Enviados pelo painel: públicos (nome aleatório) porque a Evolution baixa daqui
+    if (req.method === 'GET' && p.startsWith('/arquivos/')) return servirArquivo(req, res, DIR_ENVIADOS, p.slice('/arquivos/'.length));
 
     if (p === '/crm/login' && req.method === 'POST') {
       const { senha } = await lerJson(req);
@@ -143,6 +173,10 @@ createServer(async (req, res) => {
       return res.writeHead(302, { Location: '/crm' }).end();
     }
     if (p === '/crm' || p === '/crm/') return html(res, logado(req) ? paginaCrm : paginaLogin);
+    if (req.method === 'GET' && p.startsWith('/crm/midia/')) {
+      if (!logado(req)) return res.writeHead(401).end();
+      return servirArquivo(req, res, DIR_RECEBIDOS, p.slice('/crm/midia/'.length));
+    }
     if (p.startsWith('/crm/api/')) {
       if (!logado(req)) return json(res, { erro: 'faça login' }, 401);
       return await apiCrm(req, res, p.slice('/crm/api/'.length));

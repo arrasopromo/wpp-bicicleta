@@ -1,11 +1,26 @@
 // Recebe os eventos do webhook: registra tudo no CRM e roda a automação
 // (por padrão só para quem chegou por anúncio).
 import { config } from '../config.js';
-import { enviarTexto, enviarMidia, idsEnviados } from './evolution.js';
+import { enviarTexto, enviarMidia, enviarAudio, baixarMidia, idsEnviados } from './evolution.js';
 import { entender, arosPara, AROS } from './entender.js';
+import { DIR_RECEBIDOS, salvarBase64, tipoPorMime } from './arquivos.js';
 import {
-  contato, garantirContato, atualizarContato, registrarRecebida, registrarEnviada, ajuste,
+  contato, garantirContato, atualizarContato, registrarRecebida, registrarEnviada, definirMidia, ajuste,
 } from './db.js';
+
+// Baixa a foto/vídeo/áudio/documento da mensagem e guarda para o CRM mostrar
+const TIPOS_COM_MIDIA = new Set(['imagem', 'video', 'audio', 'documento', 'figurinha']);
+async function guardarMidia(waId, tipo) {
+  if (!waId || !TIPOS_COM_MIDIA.has(tipo)) return;
+  try {
+    const m = await baixarMidia(waId);
+    if (!m) return;
+    const nome = salvarBase64(DIR_RECEBIDOS, m.base64, m.mimetype);
+    definirMidia(waId, `/crm/midia/${nome}`, m.mimetype);
+  } catch (e) {
+    console.error('mídia não baixada:', e.message);
+  }
+}
 
 // Envios em andamento por contato: o webhook do nosso próprio envio pode chegar antes da resposta da API
 const enviando = new Map(); // jid -> { emCurso, fimEm }
@@ -33,6 +48,17 @@ async function enviar(jid, autor, envio, registro) {
 
 export const enviarTextoComo = (jid, autor, texto) =>
   enviar(jid, autor, () => enviarTexto(jid, texto), { tipo: 'texto', texto });
+
+// Arquivo enviado pelo painel. url = link público que a Evolution baixa; áudio vai como mensagem de voz
+export function enviarArquivoComo(jid, autor, { url, mimetype, nomeOriginal, legenda }) {
+  const tipo = tipoPorMime(mimetype);
+  const registro = { tipo, midiaUrl: new URL(url).pathname, mimetype };
+  if (tipo === 'audio') return enviar(jid, autor, () => enviarAudio(jid, url), { ...registro, texto: '' });
+  const mediatype = { imagem: 'image', video: 'video' }[tipo] ?? 'document';
+  return enviar(jid, autor,
+    () => enviarMidia(jid, { tipo: mediatype, url, mimetype, fileName: nomeOriginal, caption: legenda || undefined }),
+    { ...registro, texto: legenda || (tipo === 'documento' ? nomeOriginal : '') });
+}
 
 function textoDa(msg = {}) {
   return (
@@ -117,7 +143,12 @@ export function criarBot({ catalogo, publicUrl }) {
           tipo: arq.tipo, mimetype: arq.mimetype, fileName: arq.nome, url,
           caption: i === 0 ? `*${bike.nome}*` : undefined,
         }),
-        { tipo: arq.tipo === 'video' ? 'video' : 'imagem', texto: `${bike.nome} — ${arq.nome}` });
+        {
+          tipo: arq.tipo === 'video' ? 'video' : 'imagem',
+          texto: i === 0 ? bike.nome : '',
+          midiaUrl: `/midia/${encodeURIComponent(bike.pasta)}/${encodeURIComponent(arq.nome)}`,
+          mimetype: arq.mimetype,
+        });
     }
     await mandar(jid, config.gostou);
     salvar(jid, 'gostou', { ...perfil, tentativas: 0, viu: bike.nome });
@@ -191,13 +222,13 @@ export function criarBot({ catalogo, publicUrl }) {
     // Saiu deste WhatsApp sem ser por nós → atendente respondendo pelo celular: registra e pausa o bot
     if (d.key.fromMe) {
       if (await foiEnviadaPorNos(jid, d.key.id)) return;
-      registrarRecebida({ waId: d.key.id, jid, autor: 'atendente', tipo, texto });
+      if (registrarRecebida({ waId: d.key.id, jid, autor: 'atendente', tipo, texto })) guardarMidia(d.key.id, tipo);
       const c = contato(jid);
       atualizarContato(jid, { pausado_ate: Math.max(c.pausado_ate, Date.now() + config.pausaHoras * 3600_000) });
       return;
     }
 
-    registrarRecebida({ waId: d.key.id, jid, autor: 'cliente', tipo, texto });
+    if (registrarRecebida({ waId: d.key.id, jid, autor: 'cliente', tipo, texto })) guardarMidia(d.key.id, tipo);
 
     // "#teste" faz a conversa se comportar como vinda de anúncio (para testar a automação)
     const ehTeste = texto.toLowerCase() === '#teste';

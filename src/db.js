@@ -40,8 +40,8 @@ db.exec(`
 `);
 
 // Colunas novas em bancos já existentes
-for (const col of ['perfil TEXT']) {
-  try { db.exec(`ALTER TABLE contatos ADD COLUMN ${col}`); } catch { /* já existe */ }
+for (const [tabela, col] of [['contatos', 'perfil TEXT'], ['mensagens', 'midia_url TEXT'], ['mensagens', 'mimetype TEXT']]) {
+  try { db.exec(`ALTER TABLE ${tabela} ADD COLUMN ${col}`); } catch { /* já existe */ }
 }
 
 // Pausa pelo botão: dura até alguém clicar em "Retomar"
@@ -74,22 +74,30 @@ function tocarContato(jid, autor, texto, em) {
     .run(texto?.slice(0, 200) ?? '', em, autor === 'cliente' ? 1 : 0, jid);
 }
 
-// Mensagem que chegou pelo webhook (não sobrescreve se já existir)
+const previa = (tipo, texto) => texto || (tipo !== 'texto' ? `[${tipo}]` : '');
+
+// Mensagem que chegou pelo webhook (não sobrescreve se já existir). Devolve true se é nova.
 export function registrarRecebida({ waId, jid, autor, tipo, texto }) {
   const em = Date.now();
   const r = db.prepare('INSERT OR IGNORE INTO mensagens (wa_id, jid, autor, tipo, texto, criado_em) VALUES (?, ?, ?, ?, ?, ?)')
     .run(waId ?? null, jid, autor, tipo, texto ?? '', em);
-  if (r.changes) tocarContato(jid, autor, texto, em);
+  if (r.changes) tocarContato(jid, autor, previa(tipo, texto), em);
+  return r.changes > 0;
 }
 
 // Mensagem enviada por nós: o autor daqui é o correto, mesmo se o webhook chegou antes
-export function registrarEnviada({ waId, jid, autor, tipo, texto }) {
+export function registrarEnviada({ waId, jid, autor, tipo, texto, midiaUrl, mimetype }) {
   const em = Date.now();
-  db.prepare(`INSERT INTO mensagens (wa_id, jid, autor, tipo, texto, criado_em) VALUES (?, ?, ?, ?, ?, ?)
-              ON CONFLICT (wa_id) DO UPDATE SET autor = excluded.autor`)
-    .run(waId ?? null, jid, autor, tipo, texto ?? '', em);
-  tocarContato(jid, autor, texto, em);
+  db.prepare(`INSERT INTO mensagens (wa_id, jid, autor, tipo, texto, criado_em, midia_url, mimetype) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+              ON CONFLICT (wa_id) DO UPDATE SET autor = excluded.autor,
+                midia_url = COALESCE(excluded.midia_url, midia_url), mimetype = COALESCE(excluded.mimetype, mimetype)`)
+    .run(waId ?? null, jid, autor, tipo, texto ?? '', em, midiaUrl ?? null, mimetype ?? null);
+  tocarContato(jid, autor, previa(tipo, texto), em);
 }
+
+// Mídia baixada depois que a mensagem já foi registrada
+export const definirMidia = (waId, midiaUrl, mimetype) =>
+  db.prepare('UPDATE mensagens SET midia_url = ?, mimetype = ? WHERE wa_id = ?').run(midiaUrl, mimetype, waId);
 
 export function listarConversas({ filtro = 'todas', busca = '' } = {}) {
   const onde = [];

@@ -12,7 +12,8 @@
     --acc:#18181b; --acc-txt:#fff; --ponto-on:#22c55e; --ponto-off:#a1a1aa;
     --cli:#fff; --nos:#f0f0f2;
     --ads-bg:#ffedd5; --ads-txt:#c2410c;
-    --st-novo-bg:#fff; --st-novo-txt:#3f3f46; --st-novo-borda:#d4d4d8;
+    --st-novo-bg:#f4f4f5; --st-novo-txt:#52525b;
+    --sombra:0 10px 30px rgba(0,0,0,.12);
     --st-atend-bg:#fef9c3; --st-atend-txt:#854d0e;
     --st-aguard-bg:#dbeafe; --st-aguard-txt:#1d4ed8;
     --st-vendido-bg:#dcfce7; --st-vendido-txt:#15803d;
@@ -24,7 +25,8 @@
       --acc:#f4f4f5; --acc-txt:#18181b; --ponto-off:#52525b;
       --cli:#18181b; --nos:#26262a;
       --ads-bg:#431c06; --ads-txt:#fb923c;
-      --st-novo-bg:#f4f4f5; --st-novo-txt:#18181b; --st-novo-borda:#f4f4f5;
+      --st-novo-bg:#2a2a2e; --st-novo-txt:#d4d4d8;
+      --sombra:0 10px 30px rgba(0,0,0,.5);
       --st-atend-bg:#422006; --st-atend-txt:#facc15;
       --st-aguard-bg:#172554; --st-aguard-txt:#60a5fa;
       --st-vendido-bg:#052e16; --st-vendido-txt:#4ade80;
@@ -37,7 +39,7 @@
   button, select, input, textarea { font:inherit; color:inherit; }
   button { cursor:pointer; }
 
-  .app { display:grid; grid-template-rows:auto 1fr; height:100vh; height:100dvh; }
+  .app { display:grid; grid-template-rows:auto minmax(0, 1fr); grid-template-columns:minmax(0, 1fr); height:100vh; height:100dvh; }
   header { display:flex; align-items:center; gap:12px; padding:12px 16px; background:var(--card); border-bottom:1px solid var(--borda); }
   header h1 { font-size:15px; font-weight:600; margin:0; flex:1; white-space:nowrap; overflow:hidden; text-overflow:ellipsis; }
   .global { display:flex; align-items:center; gap:7px; padding:6px 12px; border-radius:8px; border:1px solid var(--borda); background:var(--card); font-size:13px; }
@@ -55,16 +57,54 @@
   .chips { display:flex; gap:4px; overflow-x:auto; scrollbar-width:none; }
   .chips::-webkit-scrollbar { display:none; }
   .ads, .st { display:inline-block; vertical-align:1px; padding:1px 7px; border-radius:999px;
-              font-size:11px; font-weight:600; line-height:16px; border:1px solid transparent; }
+              font-size:11px; font-weight:600; line-height:16px; border:0; }
   .ads { margin-right:5px; background:var(--ads-bg); color:var(--ads-txt); }
-  /* Status: novo branco, em atendimento amarelo, aguardando azul, vendido verde, perdido vermelho */
-  .st-novo { background:var(--st-novo-bg); color:var(--st-novo-txt); border-color:var(--st-novo-borda); }
+  /* Status: novo neutro, em atendimento amarelo, aguardando azul, vendido verde, perdido vermelho */
+  .st-novo { background:var(--st-novo-bg); color:var(--st-novo-txt); }
   .st-atend { background:var(--st-atend-bg); color:var(--st-atend-txt); }
   .st-aguard { background:var(--st-aguard-bg); color:var(--st-aguard-txt); }
   .st-vendido { background:var(--st-vendido-bg); color:var(--st-vendido-txt); }
   .st-perdido { background:var(--st-perdido-bg); color:var(--st-perdido-txt); }
-  select.st { font-size:13px; padding:6px 8px; border-radius:8px; vertical-align:middle; cursor:pointer; }
-  select.st option { background:var(--card); color:var(--txt); }
+
+  /* Menu de status (no lugar do select nativo) */
+  .st-menu { position:relative; }
+  .st-btn { display:inline-flex; align-items:center; gap:6px; padding:5px 10px; font-size:12px; line-height:18px; }
+  .st-btn .caret { font-size:9px; opacity:.7; }
+  .st-pop { position:absolute; right:0; top:calc(100% + 6px); z-index:30; min-width:200px; padding:6px;
+            background:var(--card); border:1px solid var(--borda); border-radius:10px; box-shadow:var(--sombra);
+            display:flex; flex-direction:column; gap:2px; }
+  .st-pop[hidden] { display:none; }
+  .st-op { display:flex; align-items:center; justify-content:space-between; gap:8px; width:100%; padding:7px 8px;
+           border:0; background:none; border-radius:6px; text-align:left; }
+  .st-op:hover { background:var(--hover); }
+  .st-op .ok { color:var(--sub); font-size:12px; }
+
+  /* Abas Conversas / Funil */
+  .abas { display:flex; gap:2px; padding:2px; border:1px solid var(--borda); border-radius:8px; background:var(--bg); }
+  .aba { border:0; background:none; padding:5px 12px; border-radius:6px; font-size:13px; color:var(--sub); }
+  .aba.ativa { background:var(--card); color:var(--txt); font-weight:600; box-shadow:0 1px 2px rgba(0,0,0,.08); }
+  .espaco { flex:1; }
+
+  /* Funil (kanban) */
+  .funil { display:none; flex-direction:column; min-height:0; min-width:0; }
+  .app.ver-funil main { display:none; }
+  .app.ver-funil .funil { display:flex; }
+  .funil-topo { display:flex; align-items:center; gap:16px; flex-wrap:wrap; padding:12px 16px; background:var(--card); border-bottom:1px solid var(--borda); }
+  .kpis { display:flex; gap:24px; flex:1; flex-wrap:wrap; }
+  .kpi b { display:block; font-size:20px; line-height:1.2; font-variant-numeric:tabular-nums; }
+  .kpi span { font-size:12px; color:var(--sub); }
+  .colunas { flex:1; min-height:0; display:grid; grid-template-columns:repeat(5, minmax(220px, 1fr)); gap:12px; padding:12px 16px; overflow-x:auto; }
+  .coluna { display:flex; flex-direction:column; min-height:0; background:var(--card); border:1px solid var(--borda); border-radius:12px; transition:border-color .15s, background .15s; }
+  .coluna.alvo { border-color:var(--sub); background:var(--hover); }
+  .col-topo { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 12px; border-bottom:1px solid var(--borda); }
+  .col-qtd { font-size:13px; font-weight:600; color:var(--sub); font-variant-numeric:tabular-nums; }
+  .cartoes { flex:1; min-height:80px; overflow-y:auto; padding:8px; display:flex; flex-direction:column; gap:8px; }
+  .cartao { display:block; width:100%; text-align:left; padding:10px; border:1px solid var(--borda); border-radius:10px; background:var(--bg); cursor:grab; }
+  .cartao:hover { border-color:var(--sub); }
+  .cartao.arrastando { opacity:.4; }
+  .cartao .previa { display:block; margin-top:2px; }
+  .cartao .info { margin-top:6px; }
+  .col-vazia { padding:16px 8px; text-align:center; font-size:12px; color:var(--sub); }
   .chip { padding:4px 10px; border-radius:6px; border:0; background:none; font-size:13px; color:var(--sub); white-space:nowrap; }
   .chip:hover { background:var(--hover); }
   .chip.ativo { background:var(--sel); color:var(--txt); font-weight:600; }
@@ -89,7 +129,6 @@
   .topo .sub { color:var(--sub); font-size:13px; margin-top:1px; }
   .topo .sub a { color:inherit; }
   .acoes { display:flex; gap:8px; align-items:center; }
-  .acoes select { padding:6px 8px; border-radius:8px; border:1px solid var(--borda); background:var(--card); }
   .btn { padding:6px 12px; border-radius:8px; border:1px solid var(--borda); background:var(--card); font-weight:500; white-space:nowrap; }
   .btn:hover { background:var(--hover); }
   .btn.primario { background:var(--acc); border-color:var(--acc); color:var(--acc-txt); }
@@ -100,21 +139,54 @@
   .msg.bot, .msg.atendente { align-self:flex-end; background:var(--nos); }
   .msg .meta { font-size:11px; color:var(--sub); text-align:right; margin-top:2px; }
   .msg .midia { color:var(--sub); }
+  .m-img { display:block; max-width:min(280px, 100%); max-height:320px; border-radius:8px; cursor:zoom-in; }
+  .m-video { display:block; max-width:min(300px, 100%); max-height:360px; border-radius:8px; background:#000; }
+  .m-audio { display:block; width:min(280px, 62vw); height:40px; }
+  .m-doc { display:inline-flex; align-items:center; gap:6px; color:inherit; font-weight:500; }
+  .m-legenda { margin-top:6px; }
+  .m-baixar { display:block; margin-top:2px; font-size:11px; color:var(--sub); }
   .dia { align-self:center; font-size:12px; color:var(--sub); margin:10px 0 4px; }
 
-  .resposta { display:flex; gap:8px; padding:10px 12px; background:var(--card); border-top:1px solid var(--borda); }
+  .compor { background:var(--card); border-top:1px solid var(--borda); }
+  .anexo { display:flex; align-items:center; gap:10px; margin:10px 12px 0; padding:8px 10px; border:1px solid var(--borda); border-radius:8px; background:var(--bg); font-size:13px; }
+  .anexo[hidden] { display:none; }
+  .anexo .nome-arq { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
+  .anexo .tam { color:var(--sub); font-size:12px; }
+  .anexo img, .anexo video { width:44px; height:44px; object-fit:cover; border-radius:6px; }
+  .progresso { height:3px; margin:0 12px; background:var(--borda); border-radius:2px; overflow:hidden; }
+  .progresso[hidden] { display:none; }
+  .progresso div { height:100%; width:0; background:var(--txt); transition:width .15s; }
+  .gravando { display:flex; align-items:center; gap:10px; padding:10px 12px; }
+  .gravando[hidden] { display:none; }
+  .gravando .rec { width:10px; height:10px; border-radius:50%; background:#ef4444; animation:pisca 1s infinite; }
+  .gravando .tempo { flex:1; font-variant-numeric:tabular-nums; }
+  @keyframes pisca { 50% { opacity:.3; } }
+  .icone { flex:none; width:40px; height:40px; display:grid; place-items:center; border:1px solid var(--borda); border-radius:8px; background:var(--card); color:var(--sub); padding:0; }
+  .icone:hover { background:var(--hover); color:var(--txt); }
+  .icone svg { width:18px; height:18px; }
+  .resposta { display:flex; align-items:flex-end; gap:8px; padding:10px 12px; }
+  .resposta[hidden] { display:none; }
   .resposta textarea { flex:1; resize:none; height:40px; max-height:140px; padding:9px 12px; border-radius:8px; border:1px solid var(--borda); background:var(--bg); outline:none; }
   .resposta textarea:focus { border-color:var(--sub); }
-  .resposta button { border:0; border-radius:8px; background:var(--acc); color:var(--acc-txt); font-weight:600; padding:0 16px; }
-  .resposta button:disabled { opacity:.5; }
+  .resposta #enviar, .gravando .enviar-audio { height:40px; border:0; border-radius:8px; background:var(--acc); color:var(--acc-txt); font-weight:600; padding:0 16px; }
+  .resposta button:disabled, .gravando button:disabled { opacity:.5; }
   .placeholder { flex:1; display:grid; place-items:center; color:var(--sub); padding:20px; text-align:center; }
 
   @media (max-width: 760px) {
     /* 16px evita o zoom automático do iPhone ao tocar nos campos */
-    .filtros input, .resposta textarea, .acoes select { font-size:16px; }
-    header { padding:10px 12px; padding-top:calc(10px + env(safe-area-inset-top)); gap:10px; }
-    header h1 { font-size:15px; }
+    .filtros input, .resposta textarea { font-size:16px; }
+    header { padding:10px 12px; padding-top:calc(10px + env(safe-area-inset-top)); gap:8px; }
+    header h1, .espaco { display:none; }
+    .abas { flex:1; }
+    .aba { flex:1; padding:6px 8px; }
     .global { padding:6px 10px; }
+    #global-txt { display:none; }
+    .funil-topo { flex-direction:column; align-items:stretch; padding:10px 12px; gap:10px; }
+    .kpis { display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:6px; }
+    .kpi b { font-size:16px; }
+    .kpi span { font-size:11px; }
+    .colunas { grid-template-columns:repeat(5, calc(100vw - 56px)); padding:10px 12px; scroll-snap-type:x mandatory; scroll-padding:0 12px; }
+    .coluna { scroll-snap-align:start; }
     main { grid-template-columns:minmax(0, 1fr); }
     .lista { border-right:0; }
     main.abrir .lista { display:none; }
@@ -129,14 +201,15 @@
     .voltar { display:inline-flex; align-items:center; justify-content:center; width:36px; height:36px; margin-left:-6px; padding:0; }
     .quem { flex:1 1 calc(100% - 44px); }
     .topo .sub { font-size:12px; }
-    .acoes { width:100%; }
-    .acoes select { flex:1; min-width:0; padding:8px; }
+    .acoes { width:100%; justify-content:space-between; }
+    .st-pop { left:0; right:auto; }
     .btn { padding:8px 14px; }
     .msgs { padding:12px 10px; }
     .msg { max-width:86%; }
-    .resposta { padding:8px 10px; padding-bottom:calc(8px + env(safe-area-inset-bottom)); }
+    .resposta, .gravando { padding:8px 10px; padding-bottom:calc(8px + env(safe-area-inset-bottom)); }
+    .resposta { gap:6px; }
     .resposta textarea { height:42px; }
-    .resposta button { padding:0 14px; }
+    .resposta button#enviar { padding:0 14px; }
   }
 </style>
 </head>
@@ -144,6 +217,11 @@
 <div class="app">
   <header>
     <h1>Casa das Bicicletas</h1>
+    <div class="abas" id="abas">
+      <button class="aba ativa" data-v="conversas">Conversas</button>
+      <button class="aba" data-v="funil">Funil</button>
+    </div>
+    <div class="espaco"></div>
     <button class="global" id="global" title="Liga/desliga a automação para todo mundo"><span class="ponto"></span><span id="global-txt">…</span></button>
     <a href="/crm/sair">Sair</a>
   </header>
@@ -165,6 +243,17 @@
       <div class="placeholder">Escolha uma conversa.</div>
     </section>
   </main>
+  <section class="funil" id="funil">
+    <div class="funil-topo">
+      <div class="kpis" id="kpis"></div>
+      <div class="chips" id="funil-chips">
+        <button class="chip ativo" data-f="todas">Todas</button>
+        <button class="chip" data-f="anuncio">Anúncio</button>
+        <button class="chip" data-f="organico">Orgânico</button>
+      </div>
+    </div>
+    <div class="colunas" id="colunas"></div>
+  </section>
 </div>
 
 <script>
@@ -172,7 +261,11 @@ const $ = (s, el = document) => el.querySelector(s);
 const esc = (s) => String(s ?? '').replace(/[&<>"']/g, (c) => ({ '&':'&amp;', '<':'&lt;', '>':'&gt;', '"':'&quot;', "'":'&#39;' }[c]));
 const PAUSA_MANUAL = 253402300799000;
 
-let estado = { filtro: 'todas', busca: '', jid: null, status: [], botAtivo: true, automacao: 'anuncio', ultimaQtd: 0, topoAtual: '' };
+let estado = {
+  filtro: 'todas', busca: '', jid: null, status: [], botAtivo: true, automacao: 'anuncio', ultimaQtd: 0, topoAtual: '',
+  visao: 'conversas', funilFiltro: 'todas', arrastando: false,
+};
+try { if (localStorage.getItem('crm-visao') === 'funil') estado.visao = 'funil'; } catch {}
 
 async function api(caminho, corpo) {
   const r = await fetch('/crm/api/' + caminho, corpo === undefined ? {} :
@@ -271,11 +364,30 @@ function renderTopo(c) {
           <div class="sub">${[telefone, anuncio, p ? textoPausa(c) : ''].filter(Boolean).join(' · ')}</div>
         </div>
         <div class="acoes">
-          <select id="status" class="${classeStatus(c.status)}">${estado.status.map((s) => `<option ${s === c.status ? 'selected' : ''}>${esc(s)}</option>`).join('')}</select>
+          <div class="st-menu">
+            <button type="button" class="${classeStatus(c.status)} st-btn" id="status-btn">${esc(c.status)}<span class="caret">▼</span></button>
+            <div class="st-pop" id="st-pop" hidden>${estado.status.map((s) =>
+              `<button type="button" class="st-op" data-s="${esc(s)}">${statusHtml(s)}${s === c.status ? '<span class="ok">✓</span>' : ''}</button>`).join('')}</div>
+          </div>
           ${automacaoVale ? `<button class="btn ${p ? 'primario' : ''}" id="pausa">${p ? 'Retomar bot' : 'Pausar bot'}</button>` : ''}
         </div>
       </div>
     </div>`;
+}
+
+// Foto, vídeo, áudio ou documento dentro do balão (mídia antiga, sem arquivo, aparece como [tipo])
+function midiaHtml(m) {
+  const u = m.midia_url ? esc(m.midia_url) : '';
+  const legenda = m.texto && m.tipo !== 'documento' ? `<div class="m-legenda">${esc(m.texto)}</div>` : '';
+  if (!u) return `<span class="midia">[${esc(m.tipo)}]</span>${m.texto ? ' ' + esc(m.texto) : ''}`;
+  if (m.tipo === 'imagem' || m.tipo === 'figurinha') {
+    return `<a href="${u}" target="_blank" rel="noopener"><img class="m-img" src="${u}" loading="lazy" alt=""></a>${legenda}`;
+  }
+  if (m.tipo === 'video') return `<video class="m-video" src="${u}" controls preload="metadata" playsinline></video>${legenda}`;
+  if (m.tipo === 'audio') {
+    return `<audio class="m-audio" src="${u}" controls preload="none"></audio><a class="m-baixar" href="${u}" download>baixar áudio</a>`;
+  }
+  return `<a class="m-doc" href="${u}" target="_blank" rel="noopener">📄 ${esc(m.texto || 'Documento')}</a>`;
 }
 
 function renderMsgs(msgs) {
@@ -285,9 +397,7 @@ function renderMsgs(msgs) {
     const sep = d !== dia ? `<div class="dia">${d}</div>` : '';
     dia = d;
     const quem = { bot: 'Bot · ', atendente: 'Atendente · ' }[m.autor] ?? '';
-    const corpo = m.tipo !== 'texto'
-      ? `<span class="midia">[${esc(m.tipo)}]</span>${m.texto ? ' ' + esc(m.texto) : ''}`
-      : esc(m.texto);
+    const corpo = m.tipo === 'texto' ? esc(m.texto) : midiaHtml(m);
     return `${sep}<div class="msg ${esc(m.autor)}">${corpo}<div class="meta">${quem}${new Date(m.criado_em).toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' })}</div></div>`;
   }).join('');
 }
@@ -303,33 +413,62 @@ async function carregarConversa(primeira) {
   if (primeira) {
     $('#conversa').innerHTML = `${renderTopo(c)}
       <div class="msgs" id="msgs"></div>
-      <form class="resposta" id="form-resp">
-        <textarea id="txt" placeholder="Responder…" title="Ao responder, o bot pausa sozinho com este cliente" rows="1"></textarea>
-        <button id="enviar">Enviar</button>
-      </form>`;
+      <div class="compor">
+        <div class="anexo" id="anexo" hidden>
+          <span id="anexo-prev"></span><span class="nome-arq" id="anexo-nome"></span><span class="tam" id="anexo-tam"></span>
+          <button type="button" class="icone" id="anexo-x" title="Remover anexo" style="width:28px;height:28px">✕</button>
+        </div>
+        <div class="progresso" id="progresso" hidden><div></div></div>
+        <div class="gravando" id="gravando" hidden>
+          <span class="rec"></span><span class="tempo" id="grav-tempo">0:00</span>
+          <button type="button" class="btn" id="grav-cancelar">Cancelar</button>
+          <button type="button" class="enviar-audio" id="grav-enviar">Enviar áudio</button>
+        </div>
+        <form class="resposta" id="form-resp">
+          <input type="file" id="arquivo" hidden accept="image/*,video/*,audio/*,application/pdf">
+          <button type="button" class="icone" id="btn-anexar" title="Anexar foto, vídeo ou documento">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="m21.4 11.1-9.2 9.2a6 6 0 0 1-8.5-8.5l9.2-9.2a4 4 0 0 1 5.7 5.7l-9.2 9.2a2 2 0 0 1-2.8-2.8l8.5-8.5"/></svg>
+          </button>
+          <textarea id="txt" placeholder="Responder…" title="Ao responder, o bot pausa sozinho com este cliente" rows="1"></textarea>
+          <button type="button" class="icone" id="btn-gravar" title="Gravar áudio">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="2" width="6" height="12" rx="3"/><path d="M19 10v1a7 7 0 0 1-14 0v-1M12 18v4"/></svg>
+          </button>
+          <button id="enviar">Enviar</button>
+        </form>
+      </div>`;
     ligarTopo(c);
     ligarResposta();
-  } else if (document.activeElement?.id !== 'status' && assinaturaTopo(c) !== estado.topoAtual) {
+  } else if ($('#st-pop')?.hidden !== false && assinaturaTopo(c) !== estado.topoAtual) {
     $('.topo').outerHTML = renderTopo(c);
     ligarTopo(c);
   }
   estado.topoAtual = assinaturaTopo(c);
 
-  if (primeira || mensagens.length !== estado.ultimaQtd) {
+  // Redesenha quando chega mensagem nova ou quando a mídia de alguma termina de baixar
+  const assinatura = `${mensagens.length}:${mensagens.filter((m) => m.midia_url).length}`;
+  if (primeira || assinatura !== estado.ultimaQtd) {
     const box = $('#msgs');
     const noFim = primeira || box.scrollHeight - box.scrollTop - box.clientHeight < 80;
     box.innerHTML = mensagens.length ? renderMsgs(mensagens) : '<div class="vazio">Sem mensagens.</div>';
-    if (noFim) box.scrollTop = box.scrollHeight;
-    estado.ultimaQtd = mensagens.length;
+    if (noFim) {
+      box.scrollTop = box.scrollHeight;
+      // imagens carregam depois: rola de novo quando terminarem
+      box.querySelectorAll('img').forEach((img) => img.addEventListener('load', () => { box.scrollTop = box.scrollHeight; }, { once: true }));
+    }
+    estado.ultimaQtd = assinatura;
   }
 }
 
 function ligarTopo(c) {
   const url = 'conversas/' + encodeURIComponent(c.jid);
   $('#voltar').onclick = () => (history.state?.conversa ? history.back() : fecharConversa());
-  $('#status').onchange = async (e) => {
-    e.target.className = classeStatus(e.target.value);
-    await api(url + '/status', { status: e.target.value }); carregarLista();
+  const pop = $('#st-pop');
+  $('#status-btn').onclick = (e) => { e.stopPropagation(); pop.hidden = !pop.hidden; };
+  pop.onclick = async (e) => {
+    const op = e.target.closest('.st-op'); if (!op) return;
+    pop.hidden = true;
+    await api(url + '/status', { status: op.dataset.s });
+    await carregarConversa(false); carregarLista();
   };
   const pausa = $('#pausa');
   if (pausa) pausa.onclick = async () => {
@@ -339,27 +478,209 @@ function ligarTopo(c) {
   };
 }
 
+const LIMITE_MB = 64;
+const tamanho = (b) => b > 1048576 ? (b / 1048576).toFixed(1).replace('.', ',') + ' MB' : Math.ceil(b / 1024) + ' KB';
+
+// Sobe o arquivo (corpo = o próprio arquivo) com barra de progresso
+function subirArquivo(jid, blob, nome, legenda) {
+  return new Promise((ok, erro) => {
+    const q = new URLSearchParams({ nome, legenda });
+    const xhr = new XMLHttpRequest();
+    xhr.open('POST', '/crm/api/conversas/' + encodeURIComponent(jid) + '/arquivo?' + q);
+    xhr.setRequestHeader('Content-Type', (blob.type || 'application/octet-stream').split(';')[0]);
+    const barra = $('#progresso'), fill = barra?.firstElementChild;
+    if (barra) barra.hidden = false;
+    xhr.upload.onprogress = (e) => { if (fill && e.lengthComputable) fill.style.width = (e.loaded / e.total * 100) + '%'; };
+    xhr.onloadend = () => {
+      if (barra) { barra.hidden = true; fill.style.width = '0'; }
+      if (xhr.status === 401) return location.reload();
+      let j = {}; try { j = JSON.parse(xhr.responseText); } catch {}
+      xhr.status >= 200 && xhr.status < 300 ? ok(j) : erro(new Error(j.erro || 'falha ao enviar'));
+    };
+    xhr.send(blob);
+  });
+}
+
 function ligarResposta() {
-  const txt = $('#txt'), btn = $('#enviar');
+  const txt = $('#txt'), btn = $('#enviar'), input = $('#arquivo');
+  let anexo = null;
+  const jid = estado.jid;
+
   txt.oninput = () => { txt.style.height = 'auto'; txt.style.height = Math.min(txt.scrollHeight, 140) + 'px'; };
   txt.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey && !celular()) { e.preventDefault(); $('#form-resp').requestSubmit(); } };
+
+  // ---- anexo ----
+  function limparAnexo() {
+    anexo = null; input.value = '';
+    $('#anexo').hidden = true; $('#anexo-prev').innerHTML = '';
+    txt.placeholder = 'Responder…';
+  }
+  $('#btn-anexar').onclick = () => input.click();
+  $('#anexo-x').onclick = limparAnexo;
+  input.onchange = () => {
+    const f = input.files[0]; if (!f) return;
+    if (f.size > LIMITE_MB * 1048576) { alert(`Arquivo muito grande (máx. ${LIMITE_MB} MB).`); input.value = ''; return; }
+    anexo = f;
+    const url = URL.createObjectURL(f);
+    $('#anexo-prev').innerHTML = f.type.startsWith('image/') ? `<img src="${url}" alt="">`
+      : f.type.startsWith('video/') ? `<video src="${url}" muted></video>` : (f.type.startsWith('audio/') ? '🎵' : '📄');
+    $('#anexo-nome').textContent = f.name;
+    $('#anexo-tam').textContent = tamanho(f.size);
+    $('#anexo').hidden = false;
+    txt.placeholder = f.type.startsWith('audio/') ? 'Áudio (sem legenda)' : 'Legenda (opcional)';
+    txt.focus();
+  };
+
+  // ---- enviar texto ou anexo ----
   $('#form-resp').onsubmit = async (e) => {
     e.preventDefault();
-    const texto = txt.value.trim(); if (!texto) return;
+    const texto = txt.value.trim();
+    if (!texto && !anexo) return;
     btn.disabled = true;
     try {
-      await api('conversas/' + encodeURIComponent(estado.jid) + '/enviar', { texto });
+      if (anexo) {
+        await subirArquivo(jid, anexo, anexo.name, anexo.type.startsWith('audio/') ? '' : texto);
+        limparAnexo();
+      } else {
+        await api('conversas/' + encodeURIComponent(jid) + '/enviar', { texto });
+      }
       txt.value = ''; txt.style.height = '';
       await carregarConversa(false); carregarLista();
     } catch (err) { alert(err.message); }
     btn.disabled = false; txt.focus();
   };
+
+  // ---- gravar áudio (vai como mensagem de voz) ----
+  let gravador = null, pedacos = [], inicio = 0, relogio = null, cancelado = false;
+  const formato = ['audio/ogg;codecs=opus', 'audio/webm;codecs=opus', 'audio/mp4', 'audio/webm']
+    .find((t) => window.MediaRecorder && MediaRecorder.isTypeSupported(t));
+
+  function telaGravando(sim) {
+    $('#gravando').hidden = !sim; $('#form-resp').hidden = sim;
+    clearInterval(relogio);
+    if (sim) {
+      inicio = Date.now();
+      relogio = setInterval(() => {
+        const s = Math.floor((Date.now() - inicio) / 1000);
+        $('#grav-tempo').textContent = `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+      }, 250);
+    }
+  }
+
+  $('#btn-gravar').onclick = async () => {
+    if (!window.MediaRecorder || !navigator.mediaDevices) return alert('Este navegador não grava áudio.');
+    let stream;
+    try { stream = await navigator.mediaDevices.getUserMedia({ audio: true }); }
+    catch { return alert('Não consegui acessar o microfone. Libere a permissão do microfone para este site.'); }
+    pedacos = []; cancelado = false;
+    gravador = new MediaRecorder(stream, formato ? { mimeType: formato } : undefined);
+    gravador.ondataavailable = (e) => e.data.size && pedacos.push(e.data);
+    gravador.onstop = async () => {
+      stream.getTracks().forEach((t) => t.stop());
+      telaGravando(false);
+      if (cancelado || !pedacos.length) return;
+      const tipo = (gravador.mimeType || formato || 'audio/webm').split(';')[0];
+      const blob = new Blob(pedacos, { type: tipo });
+      const ext = { 'audio/ogg': 'ogg', 'audio/mp4': 'm4a' }[tipo] ?? 'webm';
+      try {
+        await subirArquivo(jid, blob, `audio.${ext}`, '');
+        await carregarConversa(false); carregarLista();
+      } catch (err) { alert(err.message); }
+    };
+    gravador.start();
+    telaGravando(true);
+  };
+  $('#grav-cancelar').onclick = () => { cancelado = true; gravador?.stop(); };
+  $('#grav-enviar').onclick = () => { cancelado = false; gravador?.stop(); };
 }
 
+// Fecha o menu de status ao clicar fora
+document.addEventListener('click', (e) => {
+  const pop = $('#st-pop');
+  if (pop && !pop.hidden && !e.target.closest('.st-menu')) pop.hidden = true;
+});
+
+// ---------- funil (kanban) ----------
+function mostrarVisao(v) {
+  estado.visao = v;
+  try { localStorage.setItem('crm-visao', v); } catch {}
+  document.querySelector('.app').classList.toggle('ver-funil', v === 'funil');
+  document.querySelectorAll('.aba').forEach((a) => a.classList.toggle('ativa', a.dataset.v === v));
+  if (v === 'funil') carregarFunil(); else carregarLista();
+}
+$('#abas').onclick = (e) => { const a = e.target.closest('.aba'); if (a) mostrarVisao(a.dataset.v); };
+$('#funil-chips').onclick = (e) => {
+  const b = e.target.closest('.chip'); if (!b) return;
+  $('#funil-chips').querySelectorAll('.chip').forEach((x) => x.classList.toggle('ativo', x === b));
+  estado.funilFiltro = b.dataset.f; carregarFunil();
+};
+
+async function carregarFunil() {
+  if (estado.arrastando) return;
+  const lista = await api('conversas?' + new URLSearchParams({ filtro: estado.funilFiltro }));
+  const por = Object.fromEntries(estado.status.map((s) => [s, []]));
+  for (const c of lista) (por[c.status] ?? por['novo']).push(c);
+
+  const n = (s) => por[s]?.length ?? 0;
+  const abertas = n('novo') + n('em atendimento') + n('aguardando cliente');
+  const fechadas = n('vendido') + n('perdido');
+  const taxa = fechadas ? Math.round((n('vendido') / fechadas) * 100) + '%' : '—';
+  $('#kpis').innerHTML = [
+    [lista.length, 'conversas'],
+    [lista.filter((c) => c.origem === 'anuncio').length, 'de anúncio'],
+    [abertas, 'em aberto'],
+    [n('vendido'), 'vendidas'],
+    [taxa, 'conversão'],
+  ].map(([v, r]) => `<div class="kpi"><b>${v}</b><span>${r}</span></div>`).join('');
+
+  $('#colunas').innerHTML = estado.status.map((s) => `
+    <div class="coluna" data-s="${esc(s)}">
+      <div class="col-topo">${statusHtml(s)}<span class="col-qtd">${n(s)}</span></div>
+      <div class="cartoes">${n(s) ? por[s].map((c) => `
+        <button class="cartao" draggable="true" data-jid="${esc(c.jid)}">
+          <div class="linha"><span class="nome">${esc(nomeDe(c))}</span><span class="hora">${hora(c.ultima_msg_em)}</span></div>
+          <span class="previa">${esc(c.ultima_msg || '')}</span>
+          <div class="info">${[origemHtml(c), pausado(c) ? 'pausado' : ''].filter(Boolean).join(' · ')}</div>
+        </button>`).join('') : '<div class="col-vazia">Nenhuma conversa</div>'}</div>
+    </div>`).join('');
+}
+
+// Clique abre a conversa; arrastar entre colunas muda o status
+$('#colunas').onclick = (e) => {
+  const c = e.target.closest('.cartao'); if (!c) return;
+  mostrarVisao('conversas'); abrir(c.dataset.jid);
+};
+$('#colunas').addEventListener('dragstart', (e) => {
+  const c = e.target.closest('.cartao'); if (!c) return;
+  estado.arrastando = true;
+  e.dataTransfer.setData('text/plain', c.dataset.jid);
+  e.dataTransfer.effectAllowed = 'move';
+  c.classList.add('arrastando');
+});
+$('#colunas').addEventListener('dragend', () => {
+  estado.arrastando = false;
+  document.querySelectorAll('.cartao.arrastando, .coluna.alvo').forEach((x) => x.classList.remove('arrastando', 'alvo'));
+});
+$('#colunas').addEventListener('dragover', (e) => {
+  const col = e.target.closest('.coluna'); if (!col) return;
+  e.preventDefault();
+  document.querySelectorAll('.coluna.alvo').forEach((x) => x !== col && x.classList.remove('alvo'));
+  col.classList.add('alvo');
+});
+$('#colunas').addEventListener('drop', async (e) => {
+  const col = e.target.closest('.coluna'); if (!col) return;
+  e.preventDefault();
+  const jid = e.dataTransfer.getData('text/plain');
+  estado.arrastando = false;
+  await api('conversas/' + encodeURIComponent(jid) + '/status', { status: col.dataset.s });
+  carregarFunil();
+});
+
 // ---------- atualização automática ----------
-carregarEstado().then(carregarLista);
+carregarEstado().then(() => mostrarVisao(estado.visao));
 setInterval(() => {
   if (document.hidden) return;
+  if (estado.visao === 'funil') return void carregarFunil().catch(() => {});
   carregarLista().catch(() => {});
   carregarConversa(false).catch(() => {});
 }, 5000);
