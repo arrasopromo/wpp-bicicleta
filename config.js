@@ -80,6 +80,6 @@ export const config = {
   midiaDoCliente: 'Recebi! Um atendente já vai dar uma olhada e te responder.',
   naoEntendiFinal: 'Vou chamar um atendente para te ajudar melhor.',
 
-  naoEntendi: 'Não entendi muito bem Você procura *bicicleta*, *peças/acessórios* ou *manutenção*?',
+  naoEntendi: 'Não entendi muito bem. Você procura *bicicleta*, *peças/acessórios* ou *manutenção*?',
   naoEntendiAro: 'Me diz o *aro* (12, 16, 20, 24, 26 ou 29) ou a *idade* de quem vai usar.',
 };
