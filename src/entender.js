@@ -17,7 +17,8 @@ const RE = {
   feminino: /(feminin|\bfem\b|menina|mulher|garota|filha|neta|sobrinha|esposa|namorada|\bmoca\b|\bela\b|afilhada)/,
   masculino: /(masculin|\bmasc\b|menino|homem|garoto|\bfilho|\bneto|sobrinho|marido|namorado|rapaz|\bele\b|afilhado)/,
   adulto: /\b(adulto|adulta|adultos|pra mim|para mim|eu mesmo|eu mesma)\b/,
-  sim: /^(sim|s|quero|queria|gostei|gostei sim|isso|pode|pode ser|ok|claro|com certeza|tenho interesse|interessei|amei|top|show|perfeito)\b/,
+  sim: /^(sim|s|quero|queria|gostei|gostei sim|isso|pode|pode ser|ok|claro|com certeza|tenho interesse|interessei|amei|top|show|perfeito|lindo|linda|bonito|bonita)\b/,
+  nao: /^(nao|n|nem|mais ou menos|meh|achei feio|feio|feia)\b|nao gostei|nao curti/,
 };
 
 export function entender(texto) {
@@ -25,7 +26,7 @@ export function entender(texto) {
   const r = { texto: t };
   if (!t) return r;
 
-  for (const k of ['atendente', 'preco', 'entrega', 'endereco', 'pagamento', 'manutencao', 'pecas', 'bicicleta', 'sim']) {
+  for (const k of ['atendente', 'preco', 'entrega', 'endereco', 'pagamento', 'manutencao', 'pecas', 'bicicleta', 'sim', 'nao']) {
     if (RE[k].test(t)) r[k] = true;
   }
 

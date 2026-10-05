@@ -193,6 +193,11 @@ export function criarBot({ catalogo, publicUrl }) {
     if (recomendacao) await mandar(jid, recomendacao);
     if (!opcoes.length) return chamarAtendente(jid, c, config.semFotos(config.descrever(perfil, aros)));
     if (temSim) await mandar(jid, temSim);
+    // Já mandou essa mesma bike: não repete foto e vídeo
+    if (opcoes.length === 1 && opcoes[0].nome === perfil.viu) {
+      await mandar(jid, config.mesmaBike);
+      return salvar(jid, 'gostou', perfil);
+    }
 
     // Ainda sobrou mais de um aro (adulto: 26 ou 29) → cliente escolhe
     const arosDisponiveis = [...new Set(opcoes.map((b) => b.aro))].sort((a, b) => a - b);
@@ -287,9 +292,15 @@ export function criarBot({ catalogo, publicUrl }) {
     // Perguntamos se gostou do modelo: a resposta vai para o atendente,
     // a não ser que o cliente peça outro tamanho ("e o aro 24?", "tem pra 10 anos?")
     if (c.etapa === 'gostou') {
-      const outroTamanho = !e.sim && (e.aro || e.idade != null || e.altura || AROS.includes(e.numero));
-      if (outroTamanho) return fluxoBicicleta(jid, c, AROS.includes(e.numero) ? { ...perfil, aro: e.numero } : perfil);
-      return chamarAtendente(jid, c, e.sim ? config.interesse : config.outrosModelos);
+      const outroTamanho = !e.sim && (e.aro || e.estilo || e.idade != null || e.altura || AROS.includes(e.numero));
+      if (outroTamanho) return fluxoBicicleta(jid, c, AROS.includes(e.numero) ? { ...perfil, aro: e.numero } : perfil, e);
+      if (e.preco || e.pagamento) return chamarAtendente(jid, c, config.precoDaBike(perfil.viu || 'bike'));
+      if (e.entrega) return chamarAtendente(jid, c, config.entrega);
+      if (e.endereco) return mandar(jid, config.endereco); // continua esperando a resposta do "gostou?"
+      if (e.atendente) return chamarAtendente(jid, c, config.atendente);
+      if (e.sim) return chamarAtendente(jid, c, config.interesse);
+      if (e.nao) return chamarAtendente(jid, c, config.outrosModelos);
+      return chamarAtendente(jid, c, config.atendente); // resposta que o bot não entende: passa sem supor nada
     }
 
     // Intenções que valem em qualquer etapa

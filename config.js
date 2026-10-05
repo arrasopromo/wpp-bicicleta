@@ -64,6 +64,7 @@ export const config = {
 
   // Depois da foto + vídeo da bike destaque
   gostou: 'Gostou desse modelo?',
+  mesmaBike: 'É justamente essa que te mandei! Gostou desse modelo?',
 
   semFotos: (descricao) => `No momento não tenho as fotos da *${descricao}* aqui, mas um atendente já vai te mostrar as opções.`,
 
@@ -83,6 +84,8 @@ export const config = {
   interesse: 'Ótima escolha! Um atendente já vai te passar valores e condições.',
   outrosModelos: 'Sem problema! Temos outros modelos e cores. Um atendente já vai te mostrar as opções.',
   entrega: 'Sobre entrega e prazo, um atendente já vai te responder aqui.',
+  // depois de mostrar uma bike: pediu valor dela
+  precoDaBike: (nome) => `Vou pedir pra um atendente te passar o valor da *${nome}* e as condições de pagamento. Ele já te responde aqui!`,
   preco: 'Os valores variam por modelo. Um atendente já vai te passar os preços e condições.',
   pecas: 'Temos sim peças e acessórios! Me diz qual você procura que um atendente já te responde com disponibilidade e valor.',
   manutencao: 'Fazemos manutenção sim! Me conta o que a bike tem que um atendente já te responde.',
