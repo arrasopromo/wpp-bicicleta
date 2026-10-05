@@ -7,7 +7,7 @@ const normalizar = (s) => String(s ?? '').toLowerCase().normalize('NFD').replace
 
 const RE = {
   atendente: /\b(atendente|humano|pessoa|vendedor|vendedora|alguem|ligar|ligacao|telefone)\b/,
-  preco: /\b(preco|precos|valor|valores|custa|custo|r\$|promocao|desconto|orcamento)\b|\bquanto (custa|sai|fica|e|ta|esta|seria)\b/,
+  preco: /\b(preco|precos|valor|valores|custa|custo|r\$|promocao|desconto|orcamento)\b|\bquanto (que )?(custa|sai|fica|e|ta|esta|seria|sairia|cobra)\b/,
   entrega: /\b(entrega|entregam|entregar|entregas|frete|delivery|envio|enviam|mandam pra|manda pra)\b/,
   endereco: /\b(endereco|onde fica|onde voces|localizacao|localiza|horario|abre|abrem|fecha|fecham|funcionamento|aberto|aberta|loja fisica)\b/,
   pagamento: /\b(pagamento|pagar|parcela|parcelas|parcelado|parcelar|cartao|pix|boleto|credito|debito|vezes|dinheiro)\b/,
@@ -21,8 +21,15 @@ const RE = {
   nao: /^(nao|n|nem|mais ou menos|meh|achei feio|feio|feia)\b|nao gostei|nao curti/,
 };
 
+const POR_EXTENSO = {
+  um: 1, uma: 1, dois: 2, duas: 2, tres: 3, quatro: 4, cinco: 5, seis: 6, sete: 7, oito: 8, nove: 9, dez: 10,
+  onze: 11, doze: 12, treze: 13, quatorze: 14, catorze: 14, quinze: 15,
+};
+
 export function entender(texto) {
-  const t = normalizar(texto).trim();
+  // "cinco anos" → "5 anos"
+  const t = normalizar(texto).trim()
+    .replace(/\b(um|uma|dois|duas|tres|quatro|cinco|seis|sete|oito|nove|dez|onze|doze|treze|quatorze|catorze|quinze)\b(?=\s*(anos?|aninhos?)\b)/g, (n) => POR_EXTENSO[n]);
   const r = { texto: t };
   if (!t) return r;
 
@@ -30,9 +37,10 @@ export function entender(texto) {
     if (RE[k].test(t)) r[k] = true;
   }
 
-  const f = RE.feminino.test(t);
-  const m = RE.masculino.test(t);
-  if (f !== m) r.genero = f ? 'F' : 'M';
+  // Gênero: se aparecerem os dois ("feminina, mas gosta de personagens masculinos"), vale o primeiro citado
+  const f = t.search(RE.feminino);
+  const m = t.search(RE.masculino);
+  if (f >= 0 || m >= 0) r.genero = m < 0 || (f >= 0 && f < m) ? 'F' : 'M';
 
   // estilos especiais: só aparecem quando o cliente pede
   if (/\bbmx\b/.test(t)) r.estilo = 'bmx';

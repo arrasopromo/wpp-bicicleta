@@ -16,6 +16,8 @@ export const config = {
   // Mensagens automáticas (boas-vindas do anúncio, saudação/ausência do WhatsApp Business):
   // não contam como atendente (não pausam o bot) nem como pergunta do cliente.
   ignorar: ['.'],
+  // Mensagens que contêm algum destes trechos também são ignoradas (ex.: outro robô no celular da loja)
+  ignorarSeContem: ['whatauto.ai', 'rebrand.ly/casa_das_bicicletas'],
 
   saudacao: [
     'Olá.',

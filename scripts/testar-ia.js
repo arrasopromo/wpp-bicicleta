@@ -23,15 +23,17 @@ async function conversa(titulo, falas) {
   const numero = `55319${String(++n).padStart(8, '0')}`;
   logOriginal(`\n══════ ${titulo} ══════`);
   for (const [i, f] of falas.entries()) {
-    logOriginal(`👤 ${f}`);
+    // "LOJA: texto" = mensagem que sai do celular da loja (ex.: outro robô)
+    const daLoja = f.startsWith('LOJA: ');
+    logOriginal(daLoja ? `🏪 ${f.slice(6)}` : `👤 ${f}`);
     await bot({
       event: 'messages.upsert',
       data: {
-        key: { remoteJid: `${numero}@s.whatsapp.net`, fromMe: false, id: `ia${n}-${i}` },
+        key: { remoteJid: `${numero}@s.whatsapp.net`, fromMe: daLoja, id: `ia${n}-${i}` },
         pushName: 'Cliente',
         message: i === 0
           ? { extendedTextMessage: { text: f, contextInfo: { externalAdReply: { title: 'Teste', sourceType: 'ad', sourceId: '1' } } } }
-          : { conversation: f },
+          : { conversation: daLoja ? f.slice(6) : f },
         messageTimestamp: Math.floor(Date.now() / 1000),
       },
     });
@@ -49,6 +51,10 @@ const roteiros = {
   semgenero2: ['Olá, tenho interesse e gostaria de mais informações', 'bicicleta aro 20', 'é pro meu filho'],
   aro29: ['Olá, tenho interesse e gostaria de mais informações', 'tem aro 29?', 'feminina'],
   aro29m: ['Olá, tenho interesse e gostaria de mais informações', 'bike pra mim, tenho 1,80', 'masculina'],
+  junia: ['Olá, tenho interesse e gostaria de mais informações', 'Olá! Eu procuro uma bicicleta para criança de 9 anos. Não tenho certeza do aro.', 'Feminina, mas a criança gosta de personagens masculinos também'],
+  carlos: ['Olá, tenho interesse e gostaria de mais informações', 'Bom dia', 'Quanto tá saindo uma bicicleta pra criança de cinco anos'],
+  italo: ['Olá, tenho interesse e gostaria de mais informações', 'Bom dia', 'LOJA: **Casa das Bicicletas**\n\n🚲 Bicicletas, 🛠️ Oficina Bike, ⚙️ Peças Bike\n\n🌐 https://rebrand.ly/casa_das_bicicletas\nwhatauto.ai', 'Queria uma bicicleta para menino de 7 anos'],
+  tereza: ['Olá, tenho interesse e gostaria de mais informações', 'Bom dia tudo bem Onde fica o seu endereço da sua fábrica de bicicleta aro 20 tá quanto', 'É aro 20 é masculino'],
   depois: ['Olá, tenho interesse e gostaria de mais informações', 'aro 20 menino', 'vocês abrem domingo?', 'tem essa na cor azul?', 'oi?'],
 };
 const escolha = process.argv[2];

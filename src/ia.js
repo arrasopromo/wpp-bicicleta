@@ -48,6 +48,7 @@ ROTEIRO PARA BICICLETA (é o principal: quando o assunto é bicicleta, NUNCA cha
 REGRAS
 - Mande só o que o cliente pediu. BMX e Free Ride só se ele pedir pelo nome. Free Ride é masculina. BMX é unissex.
 - Nunca mande bike de outro gênero. Se não houver a bike pedida no catálogo, chame chamar_atendente.
+- Pergunta de preço antes de mostrar alguma bike ("quanto tá uma bike pra 5 anos?"): NÃO chame o atendente. Siga o roteiro (pergunte o que falta, como o gênero) e envie a bike — o preço vai junto.
 - Preço: use somente a tabela do catálogo abaixo. Nunca invente preço, desconto, prazo, estoque, cor ou forma de pagamento.
 - Formas de pagamento, entrega, frete, prazo, peças, acessórios, manutenção, troca, garantia ou qualquer coisa que você não saiba: chame chamar_atendente.
 - Se o cliente mandar foto, áudio ou vídeo, ou pedir para falar com uma pessoa: chame chamar_atendente.
@@ -86,6 +87,25 @@ const ferramentas = (catalogo) => [
     },
   },
 ];
+
+// Transcreve um áudio do WhatsApp (base64) para texto em português
+export async function transcrever(base64, mimetype = 'audio/ogg') {
+  const tipo = String(mimetype).split(';')[0];
+  const ext = { 'audio/ogg': 'ogg', 'audio/mpeg': 'mp3', 'audio/mp4': 'm4a', 'audio/webm': 'webm', 'audio/wav': 'wav' }[tipo] ?? 'ogg';
+  const form = new FormData();
+  form.append('file', new Blob([Buffer.from(base64, 'base64')], { type: tipo }), `audio.${ext}`);
+  form.append('model', process.env.OPENAI_TRANSCRIBE_MODEL || 'gpt-4o-mini-transcribe');
+  form.append('language', 'pt');
+  const res = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+    method: 'POST',
+    headers: { Authorization: `Bearer ${OPENAI_API_KEY}` },
+    body: form,
+    signal: AbortSignal.timeout(30_000),
+  });
+  const json = await res.json().catch(() => ({}));
+  if (!res.ok) throw new Error(`OpenAI transcrição ${res.status}: ${json?.error?.message ?? ''}`);
+  return String(json.text ?? '').trim();
+}
 
 // historico: [{ role: 'user' | 'assistant', content }]
 // enviadas: nomes das bikes cuja foto e vídeo já foram enviados nesta conversa (a última por último)

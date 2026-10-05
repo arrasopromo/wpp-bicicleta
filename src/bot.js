@@ -4,7 +4,7 @@ import { config } from '../config.js';
 import { enviarTexto, enviarMidia, enviarAudio, baixarMidia, idsEnviados } from './evolution.js';
 import { entender, arosPara, AROS } from './entender.js';
 import { DIR_RECEBIDOS, salvarBase64, tipoPorMime } from './arquivos.js';
-import { iaAtiva, pensar } from './ia.js';
+import { iaAtiva, pensar, transcrever } from './ia.js';
 import {
   contato, garantirContato, atualizarContato, registrarRecebida, registrarEnviada, definirMidia, ajuste, mensagensDe,
   atendenteRespondeu, mensagemPorWaId,
@@ -250,7 +250,8 @@ export function criarBot({ catalogo, publicUrl }) {
     const enviadas = msgs.filter((m) => m.autor === 'bot' && m.tipo === 'imagem' && m.texto).map((m) => m.texto);
     const historico = msgs.map((m) => {
       if (m.autor === 'cliente') {
-        return { role: 'user', content: m.tipo === 'texto' ? m.texto : `(o cliente mandou um ${m.tipo}) ${m.texto || ''}`.trim() };
+        if (m.tipo === 'texto' || (m.tipo === 'audio' && m.texto)) return { role: 'user', content: m.texto }; // áudio já transcrito
+        return { role: 'user', content: `(o cliente mandou um ${m.tipo}) ${m.texto || ''}`.trim() };
       }
       if (m.tipo !== 'texto') return null;
       return { role: 'assistant', content: m.texto };
@@ -273,10 +274,19 @@ export function criarBot({ catalogo, publicUrl }) {
     const avisouAtendente = /vou (chamar|pedir|passar)|atendente j[aá] vai|vai te (responder|atender)/i.test(r.texto) && !/\?\s*$/.test(r.texto);
     if (!atendente && avisouAtendente) atendente = { args: { mensagem: r.texto } };
     // Trava: pedido de bicicleta antes de mostrar alguma bike não vai para o atendente — as regras assumem
-    const sobreBike = (e.bicicleta || e.temPerfil) && !(e.atendente || e.pecas || e.manutencao || e.entrega || e.pagamento || e.preco);
+    // (pergunta de preço entra aqui: "quanto tá uma bike pra 5 anos?" segue o roteiro e o preço vai junto com a bike)
+    const sobreBike = (e.bicicleta || e.temPerfil) && !(e.atendente || e.pecas || e.manutencao || e.entrega || e.pagamento);
     if (atendente && sobreBike && !lerPerfil(contato(jid)).viuPasta) {
-      console.warn('IA quis chamar o atendente num pedido de bike; seguindo pelas regras');
-      return false;
+      // Pede o que falta para mostrar a bike (o preço vai junto com ela)
+      console.warn('IA quis chamar o atendente num pedido de bike; perguntando o que falta');
+      const temTamanho = perfil.idade != null || perfil.altura || perfil.aro;
+      const pergunta = !perfil.genero && !temTamanho ? config.perguntaPerfil
+        : !perfil.genero ? config.perguntaGenero
+        : 'Para qual idade?';
+      if (e.endereco) await mandar(jid, config.endereco); // perguntou o endereço junto
+      await mandar(jid, pergunta);
+      salvar(jid, 'ia', perfil);
+      return true;
     }
     const pedida = r.acoes.find((a) => a.nome === 'enviar_bike');
     let bike = pedida && catalogo().find((b) => b.pasta === pedida.args.pasta);
@@ -343,11 +353,12 @@ export function criarBot({ catalogo, publicUrl }) {
     const ts = Number(d.messageTimestamp) * 1000;
     if (ts && Date.now() - ts > 2 * 60_000) return;
 
-    const texto = textoDa(d.message);
+    let texto = textoDa(d.message);
     const tipo = tipoDa(d.message);
 
-    // Boas-vindas automática do anúncio (".") e afins: ignora de vez (não pausa, não registra, não responde)
+    // Boas-vindas automática do anúncio (".") e outros robôs (WhatAuto): ignora de vez (não pausa, não registra, não responde)
     if (tipo === 'texto' && config.ignorar.includes(texto)) return;
+    if (config.ignorarSeContem.some((s) => texto.toLowerCase().includes(s))) return;
 
     const telefone = jid.endsWith('@s.whatsapp.net') ? jid.split('@')[0] : null;
     garantirContato(jid, { nome: d.key.fromMe ? null : d.pushName, telefone });
@@ -361,7 +372,24 @@ export function criarBot({ catalogo, publicUrl }) {
       return;
     }
 
-    if (registrarRecebida({ waId: d.key.id, jid, autor: 'cliente', tipo, texto, ...citacaoDe(d.message) })) guardarMidia(d.key.id, tipo);
+    // Áudio do cliente: com a IA ligada, transcreve e segue como se fosse texto
+    let midiaPronta = null;
+    if (tipo === 'audio' && !texto && iaAtiva()) {
+      try {
+        const m = await baixarMidia(d.key.id);
+        if (m) {
+          midiaPronta = { url: `/crm/midia/${salvarBase64(DIR_RECEBIDOS, m.base64, m.mimetype)}`, mimetype: m.mimetype };
+          texto = await transcrever(m.base64, m.mimetype);
+        }
+      } catch (err) {
+        console.error('áudio não transcrito:', err.message);
+      }
+    }
+
+    if (registrarRecebida({ waId: d.key.id, jid, autor: 'cliente', tipo, texto, ...citacaoDe(d.message) })) {
+      if (midiaPronta) definirMidia(d.key.id, midiaPronta.url, midiaPronta.mimetype);
+      else guardarMidia(d.key.id, tipo);
+    }
 
     // "#teste" faz a conversa se comportar como vinda de anúncio (para testar a automação)
     const ehTeste = texto.toLowerCase() === '#teste';

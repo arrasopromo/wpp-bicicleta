@@ -433,7 +433,8 @@ function midiaHtml(m) {
   }
   if (m.tipo === 'video') return `<video class="m-video" src="${u}" controls preload="metadata" playsinline></video>${legenda}`;
   if (m.tipo === 'audio') {
-    return `<audio class="m-audio" src="${u}" controls preload="none"></audio><a class="m-baixar" href="${u}" download>baixar áudio</a>`;
+    const transcricao = m.texto ? `<div class="m-legenda"><span class="midia">Transcrição:</span> ${esc(m.texto)}</div>` : '';
+    return `<audio class="m-audio" src="${u}" controls preload="none"></audio><a class="m-baixar" href="${u}" download>baixar áudio</a>${transcricao}`;
   }
   return `<a class="m-doc" href="${u}" target="_blank" rel="noopener">📄 ${esc(m.texto || 'Documento')}</a>`;
 }
