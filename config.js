@@ -27,6 +27,10 @@ export const config = {
 
   perguntaPerfil: 'Ótimo! Masculina ou feminina e para qual idade?',
   perguntaGenero: 'Masculina ou feminina?',
+  // quando o cliente não respondeu o gênero e falou outra coisa
+  perguntaGeneroDeNovo: 'Só pra eu te mostrar o modelo certo: é masculina ou feminina?',
+  // resposta a "tem aro 16?" / "tem bmx?" antes de seguir
+  temSim: (descricao) => `Temos sim, *${descricao}*!`,
 
   tabelaAros: [
     'Temos as seguintes opções:',
@@ -78,6 +82,7 @@ export const config = {
   atendente: 'Certo! Um atendente vai te responder aqui em instantes.',
   interesse: 'Ótima escolha! Um atendente já vai te passar valores e condições.',
   outrosModelos: 'Sem problema! Temos outros modelos e cores. Um atendente já vai te mostrar as opções.',
+  entrega: 'Sobre entrega e prazo, um atendente já vai te responder aqui.',
   preco: 'Os valores variam por modelo. Um atendente já vai te passar os preços e condições.',
   pecas: 'Temos sim peças e acessórios! Me diz qual você procura que um atendente já te responde com disponibilidade e valor.',
   manutencao: 'Fazemos manutenção sim! Me conta o que a bike tem que um atendente já te responde.',

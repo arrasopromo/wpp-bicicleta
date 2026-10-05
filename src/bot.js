@@ -156,7 +156,8 @@ export function criarBot({ catalogo, publicUrl }) {
 
   // Com o que já sabemos do cliente, decide: perguntar, recomendar ou mandar a bike.
   // Só manda o que o cliente pediu: BMX/Free Ride só se pedir, e nunca bike do outro gênero.
-  async function fluxoBicicleta(jid, c, perfil) {
+  // e = o que o cliente acabou de escrever (para responder "Temos sim!" a uma pergunta)
+  async function fluxoBicicleta(jid, c, perfil, e = {}) {
     const aros = perfil.aro ? [perfil.aro] : arosPara(perfil);
 
     if (!aros.length && !perfil.estilo) {
@@ -174,16 +175,24 @@ export function criarBot({ catalogo, publicUrl }) {
     let opcoes = catalogo().filter((b) =>
       (perfil.estilo ? b.estilo === perfil.estilo : !b.estilo) && (!aros.length || aros.includes(b.aro)));
 
+    // Perguntou "tem aro 16?" / "tem bmx?" e temos: responde antes de seguir
+    const perguntou = e.pergunta && (e.aro || e.estilo) && opcoes.length;
+    const temSim = perguntou ? config.temSim(config.descrever({ estilo: e.estilo }, e.aro ? [e.aro] : [])) : '';
+
     // Pediu BMX/Free Ride pelo nome: manda direto, sem perguntar gênero
     if (!perfil.genero && !perfil.estilo && opcoes.some((b) => b.tipo)) {
+      const vezes = perfil.vezesGenero ?? 0;
+      if (vezes >= 3) return chamarAtendente(jid, c, config.naoEntendiFinal); // não fica em loop
       if (recomendacao) await mandar(jid, recomendacao);
-      await mandar(jid, config.perguntaGenero);
-      return salvarRecomendou('perfil', { aro: perfil.aro ?? (aros.length === 1 ? aros[0] : undefined) });
+      const pergunta = vezes ? config.perguntaGeneroDeNovo : config.perguntaGenero;
+      await mandar(jid, temSim ? `${temSim} ${vezes ? 'Só preciso saber: é' : 'É'} masculina ou feminina?` : pergunta);
+      return salvarRecomendou('perfil', { aro: perfil.aro ?? (aros.length === 1 ? aros[0] : undefined), vezesGenero: vezes + 1 });
     }
     if (perfil.genero) opcoes = opcoes.filter((b) => b.tipo === perfil.genero || b.tipo === null);
 
     if (recomendacao) await mandar(jid, recomendacao);
     if (!opcoes.length) return chamarAtendente(jid, c, config.semFotos(config.descrever(perfil, aros)));
+    if (temSim) await mandar(jid, temSim);
 
     // Ainda sobrou mais de um aro (adulto: 26 ou 29) → cliente escolhe
     const arosDisponiveis = [...new Set(opcoes.map((b) => b.aro))].sort((a, b) => a - b);
@@ -254,6 +263,8 @@ export function criarBot({ catalogo, publicUrl }) {
 
     const e = entender(ehTeste ? '' : texto);
     let perfil = novaConversa ? {} : lerPerfil(c);
+    // falou um aro diferente: é informação nova, a contagem de "não respondeu o gênero" recomeça
+    if (e.aro && e.aro !== perfil.aro) delete perfil.vezesGenero;
     for (const k of ['genero', 'idade', 'altura', 'aro', 'estilo']) if (e[k] != null) perfil[k] = e[k];
     // idade/altura nova vale mais que um aro escolhido antes
     if ((e.idade != null || e.altura) && !e.aro) {
@@ -269,7 +280,7 @@ export function criarBot({ catalogo, publicUrl }) {
     if (novaConversa) {
       await mandar(jid, config.saudacao);
       // A 1ª mensagem já diz o que quer ("quero bike aro 20 pra menina")? Segue direto
-      if (e.temPerfil && !e.pecas && !e.manutencao) return fluxoBicicleta(jid, contato(jid), perfil);
+      if (e.temPerfil && !e.pecas && !e.manutencao) return fluxoBicicleta(jid, contato(jid), perfil, e);
       return salvar(jid, 'interesse', perfil);
     }
 
@@ -285,10 +296,11 @@ export function criarBot({ catalogo, publicUrl }) {
     if (e.atendente) return chamarAtendente(jid, c, config.atendente);
     if (e.manutencao && !e.temPerfil) return chamarAtendente(jid, c, config.manutencao);
     if (e.pecas && !e.bicicleta && !e.temPerfil) return chamarAtendente(jid, c, config.pecas);
-    if (e.temPerfil) return fluxoBicicleta(jid, c, perfil);
+    if (e.temPerfil) return fluxoBicicleta(jid, c, perfil, e);
     if (e.endereco) return mandar(jid, config.endereco);
     if (e.pagamento) return mandar(jid, config.pagamento);
     if (e.preco) return chamarAtendente(jid, c, config.preco);
+    if (e.entrega) return chamarAtendente(jid, c, config.entrega);
 
     // Resposta curta que só faz sentido na etapa atual
     switch (c.etapa) {

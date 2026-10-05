@@ -45,6 +45,8 @@ async function conversa(titulo, numero, falas) {
   logOriginal(`   (etapa=${c.etapa} perfil=${c.perfil} pausado=${c.pausado_ate > Date.now()})`);
 }
 
+await conversa('Print do cliente: pergunta aro 16', '5531900000020', ['Olá, tenho interesse e gostaria de mais informações', 'bicicleta para criança de 2 anos', 'tem aro 16? acho que e melhor', 'nao entendi, voce tem aro 16 ou nao', 'menina']);
+await conversa('Ignora o gênero 3x', '5531900000021', ['oi', 'tem aro 20?', 'quanto tempo demora a entrega', 'hmm']);
 await conversa('Roteiro da loja', '5531900000001', ['Olá, vi o anúncio', 'bicicleta', 'menina de 8 anos', 'sim, gostei!']);
 await conversa('Quer aro 20 direto, não gostou', '5531900000011', ['oi', 'quero aro 20 masculina', 'não muito']);
 await conversa('Aro sem gênero', '5531900000013', ['oi', 'tem aro 20?', 'feminina']);

@@ -7,7 +7,8 @@ const normalizar = (s) => String(s ?? '').toLowerCase().normalize('NFD').replace
 
 const RE = {
   atendente: /\b(atendente|humano|pessoa|vendedor|vendedora|alguem|ligar|ligacao|telefone)\b/,
-  preco: /\b(preco|precos|valor|valores|quanto|custa|custo|r\$|promocao|desconto|orcamento)\b/,
+  preco: /\b(preco|precos|valor|valores|custa|custo|r\$|promocao|desconto|orcamento)\b|\bquanto (custa|sai|fica|e|ta|esta|seria)\b/,
+  entrega: /\b(entrega|entregam|entregar|entregas|frete|delivery|envio|enviam|mandam pra|manda pra)\b/,
   endereco: /\b(endereco|onde fica|onde voces|localizacao|localiza|horario|abre|abrem|fecha|fecham|funcionamento|aberto|aberta|loja fisica)\b/,
   pagamento: /\b(pagamento|pagar|parcela|parcelas|parcelado|parcelar|cartao|pix|boleto|credito|debito|vezes|dinheiro)\b/,
   manutencao: /(manutenc|consert|arrum|revis|regulag|reparo|oficina|quebr|furad|estragad|travad|barulho)/,
@@ -24,7 +25,7 @@ export function entender(texto) {
   const r = { texto: t };
   if (!t) return r;
 
-  for (const k of ['atendente', 'preco', 'endereco', 'pagamento', 'manutencao', 'pecas', 'bicicleta', 'sim']) {
+  for (const k of ['atendente', 'preco', 'entrega', 'endereco', 'pagamento', 'manutencao', 'pecas', 'bicicleta', 'sim']) {
     if (RE[k].test(t)) r[k] = true;
   }
 
@@ -57,6 +58,8 @@ export function entender(texto) {
   if (numero && !r.idade && !r.altura && !r.aro) r.numero = Number(numero[1]);
 
   r.temPerfil = !!(r.genero || r.idade != null || r.altura || r.aro || r.estilo);
+  // "tem aro 16?", "vocês têm bmx" → merece um "Temos sim!" antes de seguir
+  r.pergunta = /\?|\b(tem|teria|tm|possui|possuem|vende|vendem)\b/.test(t);
   return r;
 }
 
