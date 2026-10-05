@@ -238,7 +238,9 @@ export function criarBot({ catalogo, publicUrl }) {
       console.error('IA falhou, seguindo pelas regras:', err.message);
       return false;
     }
-    const atendente = r.acoes.find((a) => a.nome === 'chamar_atendente');
+    let atendente = r.acoes.find((a) => a.nome === 'chamar_atendente');
+    // Disse que vai chamar o atendente mas não acionou: aciona (senão a IA continuaria no chat)
+    if (!atendente && /atendente/i.test(r.texto)) atendente = { args: { mensagem: r.texto } };
     // Trava: pedido de bicicleta antes de mostrar alguma bike não vai para o atendente — as regras assumem
     const sobreBike = (e.bicicleta || e.temPerfil) && !(e.atendente || e.pecas || e.manutencao || e.entrega || e.pagamento || e.preco);
     if (atendente && sobreBike && !lerPerfil(contato(jid)).viuPasta) {
@@ -250,14 +252,15 @@ export function criarBot({ catalogo, publicUrl }) {
     const repetida = bike && bike.pasta === lerPerfil(contato(jid)).viuPasta;
     if (repetida) bike = null;
 
-    const texto = r.texto
+    const limpar = (s) => String(s ?? '')
       .replace(/\[[^\]]*\]/g, '')          // nunca manda anotação entre colchetes
       .replace(/\*\*(.+?)\*\*/g, '*$1*')   // negrito do WhatsApp é *assim*
       .trim();
+    const texto = limpar(r.texto);
     if (texto && !atendente) await mandar(jid, texto);
     if (repetida && !texto) await mandar(jid, config.mesmaBike);
     if (bike) await enviarBicicleta(jid, bike, perfil);
-    if (atendente) await chamarAtendente(jid, contato(jid), atendente.args.mensagem || config.atendente);
+    if (atendente) await chamarAtendente(jid, contato(jid), limpar(atendente.args.mensagem) || config.atendente);
     else if (!bike) salvar(jid, repetida ? 'gostou' : 'ia', { ...lerPerfil(contato(jid)), ...perfil });
     if (!r.texto && !bike && !atendente && !repetida) console.warn('IA não respondeu nada para', jid);
     return true;
@@ -323,6 +326,9 @@ export function criarBot({ catalogo, publicUrl }) {
         anuncio_id: anuncio.id, ctwa_clid: anuncio.clid, anuncio_em: Date.now(),
       });
     }
+
+    // "#teste" recomeça do zero: tira a pausa e esquece em que ponto a conversa estava
+    if (ehTeste) atualizarContato(jid, { pausado_ate: 0, etapa: null, perfil: null });
 
     const c = contato(jid);
     if (ajuste('bot_ativo', '1') !== '1') return;

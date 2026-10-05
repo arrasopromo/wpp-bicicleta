@@ -45,6 +45,7 @@ const roteiros = {
   conversa: ['Olá, tenho interesse e gostaria de mais informações', 'queria uma bicicleta pro meu sobrinho', 'ele tem uns 7 anos, é bem alto pra idade', 'gostei, quero essa'],
   duvidas: ['Olá, tenho interesse e gostaria de mais informações', 'vcs ficam aonde? abre sabado?', 'tem bike pra adulto? eu tenho 1,75', 'aro 29'],
   fora: ['Olá, tenho interesse e gostaria de mais informações', 'vocês fazem entrega em BH?'],
+  depois: ['Olá, tenho interesse e gostaria de mais informações', 'aro 20 menino', 'vocês abrem domingo?', 'tem essa na cor azul?', 'oi?'],
 };
 const escolha = process.argv[2];
 for (const [nome, falas] of Object.entries(roteiros)) if (!escolha || escolha === nome) await conversa(nome, falas);
