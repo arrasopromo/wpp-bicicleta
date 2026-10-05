@@ -148,6 +148,21 @@
   .msg.cliente { align-self:flex-start; background:var(--cli); border:1px solid var(--borda); }
   .msg.bot, .msg.atendente { align-self:flex-end; background:var(--nos); }
   .msg .meta { font-size:11px; color:var(--sub); text-align:right; margin-top:2px; }
+  .msg { position:relative; }
+  /* Responder (citar), como no WhatsApp */
+  .btn-resp { position:absolute; top:50%; transform:translateY(-50%); width:28px; height:28px; display:grid; place-items:center;
+              border:1px solid var(--borda); border-radius:50%; background:var(--card); color:var(--sub); padding:0; opacity:0; transition:opacity .12s; }
+  .btn-resp svg { width:14px; height:14px; }
+  .msg.cliente .btn-resp { right:-36px; }
+  .msg.bot .btn-resp, .msg.atendente .btn-resp { left:-36px; }
+  .msg:hover .btn-resp, .btn-resp:focus-visible { opacity:1; }
+  @media (hover: none) { .btn-resp { opacity:.55; } }
+  .cita { display:block; margin:0 0 6px; padding:5px 8px; border-left:3px solid var(--sub); border-radius:6px;
+          background:var(--hover); font-size:12px; color:var(--sub); cursor:pointer; white-space:normal;
+          overflow:hidden; text-overflow:ellipsis; display:-webkit-box; -webkit-line-clamp:3; -webkit-box-orient:vertical; }
+  .cita b { display:block; color:var(--txt); font-size:11px; font-weight:600; }
+  .msg.destacar { animation:destacar 1.4s; }
+  @keyframes destacar { 0%, 40% { box-shadow:0 0 0 3px var(--sub); } 100% { box-shadow:0 0 0 0 transparent; } }
   .msg .midia { color:var(--sub); }
   .m-img { display:block; max-width:min(280px, 100%); max-height:320px; border-radius:8px; cursor:zoom-in; }
   .m-video { display:block; max-width:min(300px, 100%); max-height:360px; border-radius:8px; background:#000; }
@@ -160,6 +175,9 @@
   .compor { background:var(--card); border-top:1px solid var(--borda); }
   .anexo { display:flex; align-items:center; gap:10px; margin:10px 12px 0; padding:8px 10px; border:1px solid var(--borda); border-radius:8px; background:var(--bg); font-size:13px; }
   .anexo[hidden] { display:none; }
+  .anexo.respondendo { border-left:3px solid var(--sub); }
+  .anexo.respondendo .nome-arq b { display:block; font-size:12px; }
+  .anexo.respondendo .nome-arq span { color:var(--sub); }
   .anexo .nome-arq { flex:1; min-width:0; overflow:hidden; text-overflow:ellipsis; white-space:nowrap; }
   .anexo .tam { color:var(--sub); font-size:12px; }
   .anexo img, .anexo video { width:44px; height:44px; object-fit:cover; border-radius:6px; }
@@ -420,15 +438,24 @@ function midiaHtml(m) {
   return `<a class="m-doc" href="${u}" target="_blank" rel="noopener">📄 ${esc(m.texto || 'Documento')}</a>`;
 }
 
+const ICONE_RESP = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M9 14 4 9l5-5"/><path d="M4 9h10.5a5.5 5.5 0 0 1 0 11H11"/></svg>';
+const quemCitado = (autor) => (autor === 'cliente' ? 'Cliente' : 'Você');
+
 function renderMsgs(msgs) {
   let dia = '';
+  const porId = Object.fromEntries(msgs.filter((m) => m.wa_id).map((m) => [m.wa_id, m]));
   return msgs.map((m) => {
     const d = new Date(m.criado_em).toLocaleDateString('pt-BR');
     const sep = d !== dia ? `<div class="dia">${d}</div>` : '';
     dia = d;
     const quem = { bot: 'Bot · ', atendente: 'Atendente · ' }[m.autor] ?? '';
     const corpo = m.tipo === 'texto' ? esc(m.texto) : midiaHtml(m);
-    return `${sep}<div class="msg ${esc(m.autor)}">${corpo}<div class="meta">${quem}${new Date(m.criado_em).toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' })}</div></div>`;
+    const original = m.cita_id && porId[m.cita_id];
+    const cita = m.cita_id
+      ? `<span class="cita" data-ir="${esc(m.cita_id)}"><b>${original ? quemCitado(original.autor) : 'Mensagem'}</b>${esc(m.cita_texto || '')}</span>`
+      : '';
+    const resp = m.wa_id ? `<button type="button" class="btn-resp" title="Responder" aria-label="Responder">${ICONE_RESP}</button>` : '';
+    return `${sep}<div class="msg ${esc(m.autor)}" data-id="${esc(m.wa_id || '')}" data-autor="${esc(m.autor)}" data-texto="${esc((m.texto || `[${m.tipo}]`).slice(0, 200))}">${resp}${cita}${corpo}<div class="meta">${quem}${new Date(m.criado_em).toLocaleTimeString('pt-BR', { hour:'2-digit', minute:'2-digit' })}</div></div>`;
   }).join('');
 }
 
@@ -444,6 +471,10 @@ async function carregarConversa(primeira) {
     $('#conversa').innerHTML = `${renderTopo(c)}
       <div class="msgs" id="msgs"></div>
       <div class="compor">
+        <div class="anexo respondendo" id="resp-cita" hidden>
+          <span class="nome-arq"><b id="resp-autor"></b><span id="resp-texto"></span></span>
+          <button type="button" class="icone" id="resp-x" title="Cancelar resposta" style="width:28px;height:28px">✕</button>
+        </div>
         <div class="anexo" id="anexo" hidden>
           <span id="anexo-prev"></span><span class="nome-arq" id="anexo-nome"></span><span class="tam" id="anexo-tam"></span>
           <button type="button" class="icone" id="anexo-x" title="Remover anexo" style="width:28px;height:28px">✕</button>
@@ -512,9 +543,9 @@ const LIMITE_MB = 64;
 const tamanho = (b) => b > 1048576 ? (b / 1048576).toFixed(1).replace('.', ',') + ' MB' : Math.ceil(b / 1024) + ' KB';
 
 // Sobe o arquivo (corpo = o próprio arquivo) com barra de progresso
-function subirArquivo(jid, blob, nome, legenda) {
+function subirArquivo(jid, blob, nome, legenda, responder) {
   return new Promise((ok, erro) => {
-    const q = new URLSearchParams({ nome, legenda });
+    const q = new URLSearchParams({ nome, legenda, ...(responder && { responder }) });
     const xhr = new XMLHttpRequest();
     xhr.open('POST', '/crm/api/conversas/' + encodeURIComponent(jid) + '/arquivo?' + q);
     xhr.setRequestHeader('Content-Type', (blob.type || 'application/octet-stream').split(';')[0]);
@@ -537,7 +568,33 @@ function ligarResposta() {
   const jid = estado.jid;
 
   txt.oninput = () => { txt.style.height = 'auto'; txt.style.height = Math.min(txt.scrollHeight, 140) + 'px'; };
-  txt.onkeydown = (e) => { if (e.key === 'Enter' && !e.shiftKey && !celular()) { e.preventDefault(); $('#form-resp').requestSubmit(); } };
+  txt.onkeydown = (e) => {
+    if (e.key === 'Enter' && !e.shiftKey && !celular()) { e.preventDefault(); $('#form-resp').requestSubmit(); }
+    if (e.key === 'Escape' && respondendo) limparResposta();
+  };
+
+  // ---- responder citando uma mensagem ----
+  let respondendo = null; // wa_id da mensagem citada
+  function limparResposta() { respondendo = null; $('#resp-cita').hidden = true; }
+  $('#resp-x').onclick = limparResposta;
+  $('#msgs').onclick = (e) => {
+    const b = e.target.closest('.btn-resp');
+    if (b) {
+      const m = b.closest('.msg');
+      respondendo = m.dataset.id;
+      $('#resp-autor').textContent = quemCitado(m.dataset.autor);
+      $('#resp-texto').textContent = m.dataset.texto;
+      $('#resp-cita').hidden = false;
+      txt.focus();
+      return;
+    }
+    const c = e.target.closest('.cita');
+    const alvo = c && document.querySelector(`.msg[data-id="${CSS.escape(c.dataset.ir)}"]`);
+    if (alvo) {
+      alvo.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      alvo.classList.remove('destacar'); void alvo.offsetWidth; alvo.classList.add('destacar');
+    }
+  };
 
   // ---- anexo ----
   function limparAnexo() {
@@ -569,11 +626,12 @@ function ligarResposta() {
     btn.disabled = true;
     try {
       if (anexo) {
-        await subirArquivo(jid, anexo, anexo.name, anexo.type.startsWith('audio/') ? '' : texto);
+        await subirArquivo(jid, anexo, anexo.name, anexo.type.startsWith('audio/') ? '' : texto, respondendo);
         limparAnexo();
       } else {
-        await api('conversas/' + encodeURIComponent(jid) + '/enviar', { texto });
+        await api('conversas/' + encodeURIComponent(jid) + '/enviar', { texto, ...(respondendo && { responder: respondendo }) });
       }
+      limparResposta();
       txt.value = ''; txt.style.height = '';
       await carregarConversa(false); carregarLista();
     } catch (err) { alert(err.message); }
@@ -613,7 +671,8 @@ function ligarResposta() {
       const blob = new Blob(pedacos, { type: tipo });
       const ext = { 'audio/ogg': 'ogg', 'audio/mp4': 'm4a' }[tipo] ?? 'webm';
       try {
-        await subirArquivo(jid, blob, `audio.${ext}`, '');
+        await subirArquivo(jid, blob, `audio.${ext}`, '', respondendo);
+        limparResposta();
         await carregarConversa(false); carregarLista();
       } catch (err) { alert(err.message); }
     };

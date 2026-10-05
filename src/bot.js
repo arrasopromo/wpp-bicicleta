@@ -7,7 +7,7 @@ import { DIR_RECEBIDOS, salvarBase64, tipoPorMime } from './arquivos.js';
 import { iaAtiva, pensar } from './ia.js';
 import {
   contato, garantirContato, atualizarContato, registrarRecebida, registrarEnviada, definirMidia, ajuste, mensagensDe,
-  atendenteRespondeu,
+  atendenteRespondeu, mensagemPorWaId,
 } from './db.js';
 
 // Baixa a foto/vídeo/áudio/documento da mensagem e guarda para o CRM mostrar
@@ -48,18 +48,44 @@ async function enviar(jid, autor, envio, registro) {
   }
 }
 
-export const enviarTextoComo = (jid, autor, texto) =>
-  enviar(jid, autor, () => enviarTexto(jid, texto), { tipo: 'texto', texto });
+// Resposta citada: monta o "quoted" da Evolution a partir da mensagem guardada no CRM
+function citar(jid, waId) {
+  const m = waId && mensagemPorWaId(waId);
+  if (!m || m.jid !== jid) return {};
+  const resumo = (m.texto || `[${m.tipo}]`).slice(0, 300);
+  return {
+    quoted: { key: { id: waId, remoteJid: jid, fromMe: m.autor !== 'cliente' }, message: { conversation: resumo } },
+    registro: { citaId: waId, citaTexto: resumo },
+  };
+}
+
+export function enviarTextoComo(jid, autor, texto, responderA) {
+  const { quoted, registro } = citar(jid, responderA);
+  return enviar(jid, autor, () => enviarTexto(jid, texto, quoted), { tipo: 'texto', texto, ...registro });
+}
 
 // Arquivo enviado pelo painel. url = link público que a Evolution baixa; áudio vai como mensagem de voz
-export function enviarArquivoComo(jid, autor, { url, mimetype, nomeOriginal, legenda }) {
+export function enviarArquivoComo(jid, autor, { url, mimetype, nomeOriginal, legenda, responderA }) {
   const tipo = tipoPorMime(mimetype);
-  const registro = { tipo, midiaUrl: new URL(url).pathname, mimetype };
+  const { quoted, registro: cita } = citar(jid, responderA);
+  const registro = { tipo, midiaUrl: new URL(url).pathname, mimetype, ...cita };
   if (tipo === 'audio') return enviar(jid, autor, () => enviarAudio(jid, url), { ...registro, texto: '' });
   const mediatype = { imagem: 'image', video: 'video' }[tipo] ?? 'document';
   return enviar(jid, autor,
-    () => enviarMidia(jid, { tipo: mediatype, url, mimetype, fileName: nomeOriginal, caption: legenda || undefined }),
+    () => enviarMidia(jid, { tipo: mediatype, url, mimetype, fileName: nomeOriginal, caption: legenda || undefined, quoted }),
     { ...registro, texto: legenda || (tipo === 'documento' ? nomeOriginal : '') });
+}
+
+// O cliente respondeu citando uma mensagem? Devolve { citaId, citaTexto }
+function citacaoDe(msg = {}) {
+  for (const v of Object.values(msg)) {
+    const ctx = v && typeof v === 'object' ? v.contextInfo : null;
+    if (ctx?.stanzaId) {
+      const q = ctx.quotedMessage ?? {};
+      return { citaId: ctx.stanzaId, citaTexto: (textoDa(q) || `[${tipoDa(q)}]`).slice(0, 300) };
+    }
+  }
+  return {};
 }
 
 function textoDa(msg = {}) {
@@ -329,13 +355,13 @@ export function criarBot({ catalogo, publicUrl }) {
     // Saiu deste WhatsApp sem ser por nós → atendente respondendo pelo celular: registra e pausa o bot
     if (d.key.fromMe) {
       if (await foiEnviadaPorNos(jid, d.key.id)) return;
-      if (registrarRecebida({ waId: d.key.id, jid, autor: 'atendente', tipo, texto })) guardarMidia(d.key.id, tipo);
+      if (registrarRecebida({ waId: d.key.id, jid, autor: 'atendente', tipo, texto, ...citacaoDe(d.message) })) guardarMidia(d.key.id, tipo);
       const c = contato(jid);
       atendenteRespondeu(jid, config.pausaHoras * 3600_000);
       return;
     }
 
-    if (registrarRecebida({ waId: d.key.id, jid, autor: 'cliente', tipo, texto })) guardarMidia(d.key.id, tipo);
+    if (registrarRecebida({ waId: d.key.id, jid, autor: 'cliente', tipo, texto, ...citacaoDe(d.message) })) guardarMidia(d.key.id, tipo);
 
     // "#teste" faz a conversa se comportar como vinda de anúncio (para testar a automação)
     const ehTeste = texto.toLowerCase() === '#teste';

@@ -26,11 +26,12 @@ async function chamar(caminho, corpo) {
 // "digitando…" antes de enviar, proporcional ao tamanho do texto (1,5 s a 5 s)
 const tempoDigitando = (texto) => Math.min(5000, Math.max(1500, 1000 + String(texto).length * 15));
 
-export const enviarTexto = (numero, text) =>
-  chamar('/message/sendText', { number: numero, text, delay: tempoDigitando(text) });
+// quoted (opcional) = resposta citada: { key: { id, remoteJid, fromMe }, message: { conversation } }
+export const enviarTexto = (numero, text, quoted) =>
+  chamar('/message/sendText', { number: numero, text, delay: tempoDigitando(text), ...(quoted && { quoted }) });
 
-export const enviarMidia = (numero, { tipo, url, mimetype, fileName, caption }) =>
-  chamar('/message/sendMedia', { number: numero, mediatype: tipo, mimetype, media: url, fileName, caption, delay: 1200 });
+export const enviarMidia = (numero, { tipo, url, mimetype, fileName, caption, quoted }) =>
+  chamar('/message/sendMedia', { number: numero, mediatype: tipo, mimetype, media: url, fileName, caption, delay: 1200, ...(quoted && { quoted }) });
 
 // Mensagem de voz (a Evolution converte o áudio para o formato do WhatsApp)
 export const enviarAudio = (numero, url) =>

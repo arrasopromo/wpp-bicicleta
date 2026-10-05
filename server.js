@@ -116,6 +116,7 @@ async function apiCrm(req, res, caminho) {
         mimetype,
         nomeOriginal: (u.searchParams.get('nome') || nome).slice(0, 120),
         legenda: (u.searchParams.get('legenda') || '').slice(0, 1000),
+        responderA: u.searchParams.get('responder') || undefined,
       });
     } catch (e) {
       return json(res, { erro: `não enviou: ${e.message}` }, 502);
@@ -134,7 +135,7 @@ async function apiCrm(req, res, caminho) {
     const texto = String(corpo.texto ?? '').trim();
     if (!texto) return json(res, { erro: 'mensagem vazia' }, 400);
     try {
-      await enviarTextoComo(jid, 'atendente', texto);
+      await enviarTextoComo(jid, 'atendente', texto, corpo.responder ? String(corpo.responder) : undefined);
     } catch (e) {
       return json(res, { erro: `não enviou: ${e.message}` }, 502);
     }

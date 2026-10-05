@@ -40,7 +40,10 @@ db.exec(`
 `);
 
 // Colunas novas em bancos já existentes
-for (const [tabela, col] of [['contatos', 'perfil TEXT'], ['mensagens', 'midia_url TEXT'], ['mensagens', 'mimetype TEXT']]) {
+for (const [tabela, col] of [
+  ['contatos', 'perfil TEXT'], ['mensagens', 'midia_url TEXT'], ['mensagens', 'mimetype TEXT'],
+  ['mensagens', 'cita_id TEXT'], ['mensagens', 'cita_texto TEXT'], // resposta citada (como no WhatsApp)
+]) {
   try { db.exec(`ALTER TABLE ${tabela} ADD COLUMN ${col}`); } catch { /* já existe */ }
 }
 
@@ -85,21 +88,23 @@ function tocarContato(jid, autor, texto, em) {
 const previa = (tipo, texto) => texto || (tipo !== 'texto' ? `[${tipo}]` : '');
 
 // Mensagem que chegou pelo webhook (não sobrescreve se já existir). Devolve true se é nova.
-export function registrarRecebida({ waId, jid, autor, tipo, texto }) {
+export function registrarRecebida({ waId, jid, autor, tipo, texto, citaId, citaTexto }) {
   const em = Date.now();
-  const r = db.prepare('INSERT OR IGNORE INTO mensagens (wa_id, jid, autor, tipo, texto, criado_em) VALUES (?, ?, ?, ?, ?, ?)')
-    .run(waId ?? null, jid, autor, tipo, texto ?? '', em);
+  const r = db.prepare('INSERT OR IGNORE INTO mensagens (wa_id, jid, autor, tipo, texto, criado_em, cita_id, cita_texto) VALUES (?, ?, ?, ?, ?, ?, ?, ?)')
+    .run(waId ?? null, jid, autor, tipo, texto ?? '', em, citaId ?? null, citaTexto ?? null);
   if (r.changes) tocarContato(jid, autor, previa(tipo, texto), em);
   return r.changes > 0;
 }
 
 // Mensagem enviada por nós: o autor daqui é o correto, mesmo se o webhook chegou antes
-export function registrarEnviada({ waId, jid, autor, tipo, texto, midiaUrl, mimetype }) {
+export function registrarEnviada({ waId, jid, autor, tipo, texto, midiaUrl, mimetype, citaId, citaTexto }) {
   const em = Date.now();
-  db.prepare(`INSERT INTO mensagens (wa_id, jid, autor, tipo, texto, criado_em, midia_url, mimetype) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+  db.prepare(`INSERT INTO mensagens (wa_id, jid, autor, tipo, texto, criado_em, midia_url, mimetype, cita_id, cita_texto)
+              VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
               ON CONFLICT (wa_id) DO UPDATE SET autor = excluded.autor,
-                midia_url = COALESCE(excluded.midia_url, midia_url), mimetype = COALESCE(excluded.mimetype, mimetype)`)
-    .run(waId ?? null, jid, autor, tipo, texto ?? '', em, midiaUrl ?? null, mimetype ?? null);
+                midia_url = COALESCE(excluded.midia_url, midia_url), mimetype = COALESCE(excluded.mimetype, mimetype),
+                cita_id = COALESCE(excluded.cita_id, cita_id), cita_texto = COALESCE(excluded.cita_texto, cita_texto)`)
+    .run(waId ?? null, jid, autor, tipo, texto ?? '', em, midiaUrl ?? null, mimetype ?? null, citaId ?? null, citaTexto ?? null);
   tocarContato(jid, autor, previa(tipo, texto), em);
 }
 
@@ -128,6 +133,8 @@ export function listarConversas({ filtro = 'todas', busca = '', status = '' } = 
   return db.prepare(`SELECT * FROM contatos ${onde.length ? `WHERE ${onde.join(' AND ')}` : ''}
                      ORDER BY ultima_msg_em DESC LIMIT 300`).all(...args);
 }
+
+export const mensagemPorWaId = (waId) => db.prepare('SELECT * FROM mensagens WHERE wa_id = ?').get(waId);
 
 export const mensagensDe = (jid) =>
   db.prepare('SELECT * FROM (SELECT * FROM mensagens WHERE jid = ? ORDER BY id DESC LIMIT 500) ORDER BY id').all(jid);
