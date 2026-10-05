@@ -7,7 +7,7 @@ import { carregarCatalogo, mimeDe } from './src/catalogo.js';
 import { criarBot, enviarTextoComo, enviarArquivoComo } from './src/bot.js';
 import { DIR_RECEBIDOS, DIR_ENVIADOS, salvarUpload, servirArquivo } from './src/arquivos.js';
 import {
-  listarConversas, mensagensDe, contato, atualizarContato, ajuste, salvarAjuste, STATUS, PAUSA_MANUAL,
+  listarConversas, mensagensDe, contato, atualizarContato, ajuste, salvarAjuste, STATUS, PAUSA_MANUAL, atendenteRespondeu,
 } from './src/db.js';
 import { config } from './config.js';
 
@@ -81,7 +81,11 @@ async function apiCrm(req, res, caminho) {
 
   if (caminho === 'conversas' && req.method === 'GET') {
     const u = new URL(req.url, 'http://x');
-    return json(res, listarConversas({ filtro: u.searchParams.get('filtro') || 'todas', busca: u.searchParams.get('q') || '' }));
+    return json(res, listarConversas({
+      filtro: u.searchParams.get('filtro') || 'todas',
+      busca: u.searchParams.get('q') || '',
+      status: u.searchParams.get('status') || '',
+    }));
   }
 
   const m = /^conversas\/([^/]+)(?:\/(\w+))?$/.exec(caminho);
@@ -116,8 +120,7 @@ async function apiCrm(req, res, caminho) {
     } catch (e) {
       return json(res, { erro: `não enviou: ${e.message}` }, 502);
     }
-    const c = contato(jid);
-    atualizarContato(jid, { pausado_ate: Math.max(c.pausado_ate, Date.now() + config.pausaHoras * 3600_000) });
+    atendenteRespondeu(jid, config.pausaHoras * 3600_000);
     return json(res, { contato: contato(jid) });
   }
 
@@ -136,8 +139,7 @@ async function apiCrm(req, res, caminho) {
       return json(res, { erro: `não enviou: ${e.message}` }, 502);
     }
     // Atendente assumiu: bot fica calado com esse cliente
-    const c = contato(jid);
-    atualizarContato(jid, { pausado_ate: Math.max(c.pausado_ate, Date.now() + config.pausaHoras * 3600_000) });
+    atendenteRespondeu(jid, config.pausaHoras * 3600_000);
   } else {
     return json(res, { erro: 'ação inválida' }, 400);
   }

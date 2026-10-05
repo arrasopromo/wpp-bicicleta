@@ -13,6 +13,7 @@
     --cli:#fff; --nos:#f0f0f2;
     --ads-bg:#ffedd5; --ads-txt:#c2410c;
     --st-novo-bg:#f4f4f5; --st-novo-txt:#52525b;
+    --st-humano-bg:#f3e8ff; --st-humano-txt:#7e22ce;
     --sombra:0 10px 30px rgba(0,0,0,.12);
     --st-atend-bg:#fef9c3; --st-atend-txt:#854d0e;
     --st-aguard-bg:#dbeafe; --st-aguard-txt:#1d4ed8;
@@ -26,6 +27,7 @@
       --cli:#18181b; --nos:#26262a;
       --ads-bg:#431c06; --ads-txt:#fb923c;
       --st-novo-bg:#2a2a2e; --st-novo-txt:#d4d4d8;
+      --st-humano-bg:#3b0764; --st-humano-txt:#d8b4fe;
       --sombra:0 10px 30px rgba(0,0,0,.5);
       --st-atend-bg:#422006; --st-atend-txt:#facc15;
       --st-aguard-bg:#172554; --st-aguard-txt:#60a5fa;
@@ -61,6 +63,7 @@
   .ads { margin-right:5px; background:var(--ads-bg); color:var(--ads-txt); }
   /* Status: novo neutro, em atendimento amarelo, aguardando azul, vendido verde, perdido vermelho */
   .st-novo { background:var(--st-novo-bg); color:var(--st-novo-txt); }
+  .st-humano { background:var(--st-humano-bg); color:var(--st-humano-txt); }
   .st-atend { background:var(--st-atend-bg); color:var(--st-atend-txt); }
   .st-aguard { background:var(--st-aguard-bg); color:var(--st-aguard-txt); }
   .st-vendido { background:var(--st-vendido-bg); color:var(--st-vendido-txt); }
@@ -78,6 +81,12 @@
            border:0; background:none; border-radius:6px; text-align:left; }
   .st-op:hover { background:var(--hover); }
   .st-op .ok { color:var(--sub); font-size:12px; }
+  .filtro-st { display:inline-flex; align-items:center; gap:8px; padding:6px 10px; border:1px solid var(--borda); border-radius:8px;
+               background:var(--bg); font-size:13px; color:var(--sub); }
+  .filtro-st .caret { font-size:9px; opacity:.7; }
+  .filtro-st.on { color:var(--txt); }
+  #filtro-st-pop { left:0; right:auto; }
+  .filtros .st-menu { align-self:flex-start; }
 
   /* Abas Conversas / Funil */
   .abas { display:flex; gap:2px; padding:2px; border:1px solid var(--borda); border-radius:8px; background:var(--bg); }
@@ -93,7 +102,8 @@
   .kpis { display:flex; gap:24px; flex:1; flex-wrap:wrap; }
   .kpi b { display:block; font-size:20px; line-height:1.2; font-variant-numeric:tabular-nums; }
   .kpi span { font-size:12px; color:var(--sub); }
-  .colunas { flex:1; min-height:0; display:grid; grid-template-columns:repeat(5, minmax(220px, 1fr)); gap:12px; padding:12px 16px; overflow-x:auto; }
+  .colunas { flex:1; min-height:0; display:grid; grid-template-columns:repeat(6, minmax(180px, 1fr)); gap:10px; padding:12px 16px; overflow-x:auto;
+             scrollbar-color:var(--borda) transparent; }
   .coluna { display:flex; flex-direction:column; min-height:0; background:var(--card); border:1px solid var(--borda); border-radius:12px; transition:border-color .15s, background .15s; }
   .coluna.alvo { border-color:var(--sub); background:var(--hover); }
   .col-topo { display:flex; align-items:center; justify-content:space-between; gap:8px; padding:10px 12px; border-bottom:1px solid var(--borda); }
@@ -182,10 +192,10 @@
     .global { padding:6px 10px; }
     #global-txt { display:none; }
     .funil-topo { flex-direction:column; align-items:stretch; padding:10px 12px; gap:10px; }
-    .kpis { display:grid; grid-template-columns:repeat(5, minmax(0, 1fr)); gap:6px; }
+    .kpis { display:grid; grid-template-columns:repeat(4, minmax(0, 1fr)); gap:8px 6px; }
     .kpi b { font-size:16px; }
     .kpi span { font-size:11px; }
-    .colunas { grid-template-columns:repeat(5, calc(100vw - 56px)); padding:10px 12px; scroll-snap-type:x mandatory; scroll-padding:0 12px; }
+    .colunas { grid-template-columns:repeat(6, calc(100vw - 56px)); padding:10px 12px; scroll-snap-type:x mandatory; scroll-padding:0 12px; }
     .coluna { scroll-snap-align:start; }
     main { grid-template-columns:minmax(0, 1fr); }
     .lista { border-right:0; }
@@ -234,7 +244,10 @@
           <button class="chip" data-f="anuncio">Anúncio</button>
           <button class="chip" data-f="organico">Orgânico</button>
           <button class="chip" data-f="nao_lidas">Não lidas</button>
-          <button class="chip" data-f="pausado">Pausadas</button>
+        </div>
+        <div class="st-menu">
+          <button type="button" class="filtro-st" id="filtro-st-btn"><span id="filtro-st-txt">Todos os status</span><span class="caret">▼</span></button>
+          <div class="st-pop" id="filtro-st-pop" hidden></div>
         </div>
       </div>
       <div class="itens" id="itens"></div>
@@ -263,7 +276,7 @@ const PAUSA_MANUAL = 253402300799000;
 
 let estado = {
   filtro: 'todas', busca: '', jid: null, status: [], botAtivo: true, automacao: 'anuncio', ultimaQtd: 0, topoAtual: '',
-  visao: 'conversas', funilFiltro: 'todas', arrastando: false,
+  visao: 'conversas', funilFiltro: 'todas', arrastando: false, filtroStatus: '',
 };
 try { if (localStorage.getItem('crm-visao') === 'funil') estado.visao = 'funil'; } catch {}
 
@@ -294,7 +307,7 @@ function textoPausa(c) {
 const origemHtml = (c) => c.origem === 'anuncio'
   ? `<span class="ads">Anúncio</span>${esc(c.anuncio_titulo || '')}`
   : 'Orgânico';
-const CLASSE_STATUS = { 'novo': 'st-novo', 'em atendimento': 'st-atend', 'aguardando cliente': 'st-aguard', 'vendido': 'st-vendido', 'perdido': 'st-perdido' };
+const CLASSE_STATUS = { 'novo': 'st-novo', 'aguardando humano': 'st-humano', 'em atendimento': 'st-atend', 'aguardando cliente': 'st-aguard', 'vendido': 'st-vendido', 'perdido': 'st-perdido' };
 const classeStatus = (s) => `st ${CLASSE_STATUS[s] ?? 'st-novo'}`;
 const statusHtml = (s) => `<span class="${classeStatus(s)}">${esc(s)}</span>`;
 
@@ -312,7 +325,7 @@ $('#global').onclick = () => {
 
 // ---------- lista ----------
 async function carregarLista() {
-  const q = new URLSearchParams({ filtro: estado.filtro, q: estado.busca });
+  const q = new URLSearchParams({ filtro: estado.filtro, q: estado.busca, status: estado.filtroStatus });
   const lista = await api('conversas?' + q);
   const itens = $('#itens');
   if (!lista.length) { itens.innerHTML = '<div class="vazio">Nenhuma conversa.</div>'; return; }
@@ -329,6 +342,23 @@ $('#chips').onclick = (e) => {
   document.querySelectorAll('.chip').forEach((x) => x.classList.toggle('ativo', x === b));
   estado.filtro = b.dataset.f; carregarLista();
 };
+// Filtro por status (soma com Todas/Anúncio/Orgânico/Não lidas)
+function montarFiltroStatus() {
+  const pop = $('#filtro-st-pop');
+  pop.innerHTML = [['', 'Todos os status'], ...estado.status.map((s) => [s, s])].map(([v, rot]) =>
+    `<button type="button" class="st-op" data-s="${esc(v)}">${v ? statusHtml(v) : esc(rot)}${v === estado.filtroStatus ? '<span class="ok">✓</span>' : ''}</button>`).join('');
+  const btn = $('#filtro-st-btn');
+  btn.classList.toggle('on', !!estado.filtroStatus);
+  $('#filtro-st-txt').innerHTML = estado.filtroStatus ? statusHtml(estado.filtroStatus) : 'Todos os status';
+}
+$('#filtro-st-btn').onclick = (e) => { e.stopPropagation(); $('#filtro-st-pop').hidden = !$('#filtro-st-pop').hidden; };
+$('#filtro-st-pop').onclick = (e) => {
+  const op = e.target.closest('.st-op'); if (!op) return;
+  estado.filtroStatus = op.dataset.s;
+  $('#filtro-st-pop').hidden = true;
+  montarFiltroStatus(); carregarLista();
+};
+
 let tBusca;
 $('#busca').oninput = (e) => { clearTimeout(tBusca); tBusca = setTimeout(() => { estado.busca = e.target.value.trim(); carregarLista(); }, 250); };
 
@@ -594,10 +624,11 @@ function ligarResposta() {
   $('#grav-enviar').onclick = () => { cancelado = false; gravador?.stop(); };
 }
 
-// Fecha o menu de status ao clicar fora
+// Fecha os menus de status ao clicar fora
 document.addEventListener('click', (e) => {
-  const pop = $('#st-pop');
-  if (pop && !pop.hidden && !e.target.closest('.st-menu')) pop.hidden = true;
+  document.querySelectorAll('.st-pop').forEach((pop) => {
+    if (!pop.hidden && !pop.closest('.st-menu').contains(e.target)) pop.hidden = true;
+  });
 });
 
 // ---------- funil (kanban) ----------
@@ -622,12 +653,13 @@ async function carregarFunil() {
   for (const c of lista) (por[c.status] ?? por['novo']).push(c);
 
   const n = (s) => por[s]?.length ?? 0;
-  const abertas = n('novo') + n('em atendimento') + n('aguardando cliente');
+  const abertas = n('novo') + n('aguardando humano') + n('em atendimento') + n('aguardando cliente');
   const fechadas = n('vendido') + n('perdido');
   const taxa = fechadas ? Math.round((n('vendido') / fechadas) * 100) + '%' : '—';
   $('#kpis').innerHTML = [
     [lista.length, 'conversas'],
     [lista.filter((c) => c.origem === 'anuncio').length, 'de anúncio'],
+    [n('aguardando humano'), 'aguardando humano'],
     [abertas, 'em aberto'],
     [n('vendido'), 'vendidas'],
     [taxa, 'conversão'],
@@ -677,7 +709,7 @@ $('#colunas').addEventListener('drop', async (e) => {
 });
 
 // ---------- atualização automática ----------
-carregarEstado().then(() => mostrarVisao(estado.visao));
+carregarEstado().then(() => { montarFiltroStatus(); mostrarVisao(estado.visao); });
 setInterval(() => {
   if (document.hidden) return;
   if (estado.visao === 'funil') return void carregarFunil().catch(() => {});

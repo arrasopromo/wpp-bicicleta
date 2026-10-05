@@ -37,7 +37,7 @@ async function conversa(titulo, falas) {
     });
   }
   const c = contato(`${numero}@s.whatsapp.net`);
-  logOriginal(`   (pausado=${c.pausado_ate > Date.now()})`);
+  logOriginal(`   (pausado=${c.pausado_ate > Date.now()} status=${c.status})`);
 }
 
 const roteiros = {

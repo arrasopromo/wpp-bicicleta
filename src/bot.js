@@ -7,6 +7,7 @@ import { DIR_RECEBIDOS, salvarBase64, tipoPorMime } from './arquivos.js';
 import { iaAtiva, pensar } from './ia.js';
 import {
   contato, garantirContato, atualizarContato, registrarRecebida, registrarEnviada, definirMidia, ajuste, mensagensDe,
+  atendenteRespondeu,
 } from './db.js';
 
 // Baixa a foto/vídeo/áudio/documento da mensagem e guarda para o CRM mostrar
@@ -121,12 +122,14 @@ export function criarBot({ catalogo, publicUrl }) {
   }
 
   // Passa para uma pessoa: avisa o cliente e o bot fica calado com ele
+  // Passa para uma pessoa em silêncio (config.avisarAoPassar): o cliente segue achando que é humano.
+  // O status vira "aguardando humano" para a equipe filtrar no CRM.
   async function chamarAtendente(jid, c, texto) {
-    await mandar(jid, texto);
+    if (config.avisarAoPassar && texto) await mandar(jid, texto);
     atualizarContato(jid, {
       etapa: null,
       perfil: null,
-      status: c.status === 'novo' ? 'em atendimento' : c.status,
+      status: ['vendido', 'perdido'].includes(c.status) ? c.status : 'aguardando humano',
       pausado_ate: Date.now() + config.pausaHoras * 3600_000,
     });
   }
@@ -328,7 +331,7 @@ export function criarBot({ catalogo, publicUrl }) {
       if (await foiEnviadaPorNos(jid, d.key.id)) return;
       if (registrarRecebida({ waId: d.key.id, jid, autor: 'atendente', tipo, texto })) guardarMidia(d.key.id, tipo);
       const c = contato(jid);
-      atualizarContato(jid, { pausado_ate: Math.max(c.pausado_ate, Date.now() + config.pausaHoras * 3600_000) });
+      atendenteRespondeu(jid, config.pausaHoras * 3600_000);
       return;
     }
 

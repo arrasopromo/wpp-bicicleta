@@ -47,7 +47,7 @@ for (const [tabela, col] of [['contatos', 'perfil TEXT'], ['mensagens', 'midia_u
 // Pausa pelo botão: dura até alguém clicar em "Retomar"
 export const PAUSA_MANUAL = 253402300799000;
 
-export const STATUS = ['novo', 'em atendimento', 'aguardando cliente', 'vendido', 'perdido'];
+export const STATUS = ['novo', 'aguardando humano', 'em atendimento', 'aguardando cliente', 'vendido', 'perdido'];
 
 const CAMPOS = new Set([
   'nome', 'origem', 'anuncio_titulo', 'anuncio_texto', 'anuncio_url', 'anuncio_id', 'ctwa_clid', 'anuncio_em',
@@ -55,6 +55,14 @@ const CAMPOS = new Set([
 ]);
 
 export const contato = (jid) => db.prepare('SELECT * FROM contatos WHERE jid = ?').get(jid);
+
+// Uma pessoa da loja respondeu (celular ou painel): bot fica calado e "aguardando humano" vira "em atendimento"
+export function atendenteRespondeu(jid, pausaMs) {
+  const c = contato(jid);
+  if (!c) return;
+  const status = ['novo', 'aguardando humano'].includes(c.status) ? 'em atendimento' : c.status;
+  db.prepare('UPDATE contatos SET pausado_ate = ?, status = ? WHERE jid = ?').run(Math.max(c.pausado_ate, Date.now() + pausaMs), status, jid);
+}
 
 export function garantirContato(jid, { nome, telefone } = {}) {
   db.prepare('INSERT OR IGNORE INTO contatos (jid, telefone, criado_em) VALUES (?, ?, ?)').run(jid, telefone ?? null, Date.now());
@@ -99,9 +107,13 @@ export function registrarEnviada({ waId, jid, autor, tipo, texto, midiaUrl, mime
 export const definirMidia = (waId, midiaUrl, mimetype) =>
   db.prepare('UPDATE mensagens SET midia_url = ?, mimetype = ? WHERE wa_id = ?').run(midiaUrl, mimetype, waId);
 
-export function listarConversas({ filtro = 'todas', busca = '' } = {}) {
+export function listarConversas({ filtro = 'todas', busca = '', status = '' } = {}) {
   const onde = [];
   const args = [];
+  if (status && STATUS.includes(status)) {
+    onde.push('status = ?');
+    args.push(status);
+  }
   if (filtro === 'anuncio') onde.push(`origem = 'anuncio'`);
   if (filtro === 'organico') onde.push(`origem = 'organico'`);
   if (filtro === 'pausado') {

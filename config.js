@@ -8,6 +8,8 @@ export const config = {
   sessaoMinutos: 30,
   // Quanto tempo o bot fica calado depois que um atendente assume a conversa
   pausaHoras: 12,
+  // false = ao passar para a equipe o bot não avisa o cliente (só pausa e marca "aguardando humano")
+  avisarAoPassar: false,
   // Vídeos maiores que isso não são enviados (o WhatsApp recusa arquivos muito grandes)
   videoMaxMB: 60,
 
@@ -99,12 +101,12 @@ export const config = {
     'Aro20BMX': '*R$ 960,00*, em até 6x',
     'Aro24 fem': 'sem marcha a partir de *R$ 685,00*, com marcha a partir de *R$ 735,00* e com quadro de alumínio a partir de *R$ 795,00*, em até 6x',
     'Aro24 masc': 'sem marcha a partir de *R$ 665,00* e com marcha a partir de *R$ 698,00*, em até 6x',
-    'Aro26 fem': 'com marcha, a partir de *R$ 719,00* (o parcelamento o atendente te passa)',
-    'Aro26 masc': 'com marcha, a partir de *R$ 719,00* (o parcelamento o atendente te passa)',
+    'Aro26 fem': 'com marcha, a partir de *R$ 719,00*',
+    'Aro26 masc': 'com marcha, a partir de *R$ 719,00*',
     'Aro26 free ride': '*R$ 2.390,00*, em até 10x',
   },
   valorDaBike: (nome, preco) => `A *${nome}* sai ${preco}.`,
-  finalizar: 'Quer que um atendente finalize com você?',
+  finalizar: 'Gostou desse modelo?',
   // sem preço cadastrado para a bike
   precoDaBike: (nome) => `Vou pedir pra um atendente te passar o valor da *${nome}* e as condições de pagamento. Ele já te responde aqui!`,
   preco: 'Os valores variam por modelo. Um atendente já vai te passar os preços e condições.',
