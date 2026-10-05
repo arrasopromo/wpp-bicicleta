@@ -9,6 +9,7 @@
     "start": "node --env-file-if-exists=.env server.js",
     "dev": "node --env-file-if-exists=.env --watch server.js",
     "webhook": "node --env-file-if-exists=.env scripts/set-webhook.js",
-    "testar": "node --env-file-if-exists=.env scripts/simular.js"
+    "testar": "node --env-file-if-exists=.env scripts/simular.js",
+    "testar-ia": "node --env-file-if-exists=.env scripts/testar-ia.js"
   }
 }

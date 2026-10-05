@@ -99,7 +99,8 @@ export const config = {
     'Aro26 masc': 'com marcha, a partir de *R$ 719,00* (o parcelamento o atendente te passa)',
     'Aro26 free ride': '*R$ 2.390,00*, em até 10x',
   },
-  valorDaBike: (nome, preco) => `A *${nome}* sai ${preco}.\n\nQuer que um atendente finalize com você?`,
+  valorDaBike: (nome, preco) => `A *${nome}* sai ${preco}.`,
+  finalizar: 'Quer que um atendente finalize com você?',
   // sem preço cadastrado para a bike
   precoDaBike: (nome) => `Vou pedir pra um atendente te passar o valor da *${nome}* e as condições de pagamento. Ele já te responde aqui!`,
   preco: 'Os valores variam por modelo. Um atendente já vai te passar os preços e condições.',

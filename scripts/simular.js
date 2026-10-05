@@ -1,6 +1,7 @@
 // Simula conversas sem mandar nada de verdade (DRY_RUN, banco em memória): npm run testar
 process.env.DRY_RUN = '1';
 process.env.DB_PATH = ':memory:';
+process.env.OPENAI_API_KEY = ''; // testa as regras (a IA tem o próprio teste: npm run testar-ia)
 const { resolve } = await import('node:path');
 const { carregarCatalogo } = await import('../src/catalogo.js');
 const { criarBot } = await import('../src/bot.js');

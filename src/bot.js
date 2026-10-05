@@ -4,8 +4,9 @@ import { config } from '../config.js';
 import { enviarTexto, enviarMidia, enviarAudio, baixarMidia, idsEnviados } from './evolution.js';
 import { entender, arosPara, AROS } from './entender.js';
 import { DIR_RECEBIDOS, salvarBase64, tipoPorMime } from './arquivos.js';
+import { iaAtiva, pensar } from './ia.js';
 import {
-  contato, garantirContato, atualizarContato, registrarRecebida, registrarEnviada, definirMidia, ajuste,
+  contato, garantirContato, atualizarContato, registrarRecebida, registrarEnviada, definirMidia, ajuste, mensagensDe,
 } from './db.js';
 
 // Baixa a foto/vídeo/áudio/documento da mensagem e guarda para o CRM mostrar
@@ -150,9 +151,10 @@ export function criarBot({ catalogo, publicUrl }) {
           mimetype: arq.mimetype,
         });
     }
-    // "quanto custa a aro 16 menina?" → já manda o valor junto
-    const preco = (e.preco || e.pagamento) && config.precos[bike.pasta];
-    await mandar(jid, preco ? config.valorDaBike(bike.nome, preco) : config.gostou);
+    // Depois da foto e do vídeo: valor com parcelamento (se cadastrado) e a pergunta
+    const preco = config.precos[bike.pasta];
+    if (preco) await mandar(jid, config.valorDaBike(bike.nome, preco));
+    await mandar(jid, config.gostou);
     salvar(jid, 'gostou', { ...perfil, tentativas: 0, viu: bike.nome, viuPasta: bike.pasta });
   }
 
@@ -198,7 +200,8 @@ export function criarBot({ catalogo, publicUrl }) {
     // Já mandou essa mesma bike: não repete foto e vídeo
     if (opcoes.length === 1 && opcoes[0].nome === perfil.viu) {
       const preco = (e.preco || e.pagamento) && config.precos[opcoes[0].pasta];
-      await mandar(jid, preco ? config.valorDaBike(opcoes[0].nome, preco) : config.mesmaBike);
+      if (preco) await mandar(jid, config.valorDaBike(opcoes[0].nome, preco));
+      await mandar(jid, preco ? config.finalizar : config.mesmaBike);
       return salvar(jid, 'gostou', perfil);
     }
 
@@ -211,6 +214,55 @@ export function criarBot({ catalogo, publicUrl }) {
     return enviarBicicleta(jid, opcoes[0], perfil, e);
   }
 
+  // Histórico da conversa no formato da OpenAI. Fotos/vídeos do bot não entram como mensagem
+  // (a IA copiava as anotações); a lista de bikes enviadas vai à parte, em "enviadas".
+  function historicoParaIA(jid) {
+    const msgs = mensagensDe(jid).slice(-30);
+    const enviadas = msgs.filter((m) => m.autor === 'bot' && m.tipo === 'imagem' && m.texto).map((m) => m.texto);
+    const historico = msgs.map((m) => {
+      if (m.autor === 'cliente') {
+        return { role: 'user', content: m.tipo === 'texto' ? m.texto : `(o cliente mandou um ${m.tipo}) ${m.texto || ''}`.trim() };
+      }
+      if (m.tipo !== 'texto') return null;
+      return { role: 'assistant', content: m.texto };
+    }).filter((m) => m && m.content);
+    return { historico, enviadas: [...new Set(enviadas)] };
+  }
+
+  // Deixa a IA responder. Devolve false se a OpenAI falhar (aí seguem as regras).
+  async function atenderComIA(jid, perfil, e) {
+    let r;
+    try {
+      r = await pensar({ catalogo: catalogo(), ...historicoParaIA(jid) });
+    } catch (err) {
+      console.error('IA falhou, seguindo pelas regras:', err.message);
+      return false;
+    }
+    const atendente = r.acoes.find((a) => a.nome === 'chamar_atendente');
+    // Trava: pedido de bicicleta antes de mostrar alguma bike não vai para o atendente — as regras assumem
+    const sobreBike = (e.bicicleta || e.temPerfil) && !(e.atendente || e.pecas || e.manutencao || e.entrega || e.pagamento || e.preco);
+    if (atendente && sobreBike && !lerPerfil(contato(jid)).viuPasta) {
+      console.warn('IA quis chamar o atendente num pedido de bike; seguindo pelas regras');
+      return false;
+    }
+    const pedida = r.acoes.find((a) => a.nome === 'enviar_bike');
+    let bike = pedida && catalogo().find((b) => b.pasta === pedida.args.pasta);
+    const repetida = bike && bike.pasta === lerPerfil(contato(jid)).viuPasta;
+    if (repetida) bike = null;
+
+    const texto = r.texto
+      .replace(/\[[^\]]*\]/g, '')          // nunca manda anotação entre colchetes
+      .replace(/\*\*(.+?)\*\*/g, '*$1*')   // negrito do WhatsApp é *assim*
+      .trim();
+    if (texto && !atendente) await mandar(jid, texto);
+    if (repetida && !texto) await mandar(jid, config.mesmaBike);
+    if (bike) await enviarBicicleta(jid, bike, perfil);
+    if (atendente) await chamarAtendente(jid, contato(jid), atendente.args.mensagem || config.atendente);
+    else if (!bike) salvar(jid, repetida ? 'gostou' : 'ia', { ...lerPerfil(contato(jid)), ...perfil });
+    if (!r.texto && !bike && !atendente && !repetida) console.warn('IA não respondeu nada para', jid);
+    return true;
+  }
+
   // Não entendeu: tenta de novo uma vez, na segunda chama o atendente
   async function naoEntendeu(jid, c, perfil, texto) {
     const tentativas = (perfil.tentativas ?? 0) + 1;
@@ -219,7 +271,18 @@ export function criarBot({ catalogo, publicUrl }) {
     salvar(jid, c.etapa, { ...perfil, tentativas });
   }
 
-  return async function processar(evento) {
+  // Uma mensagem por vez para cada contato: duas mensagens seguidas não geram duas respostas
+  // em paralelo, e a segunda já vê o que foi respondido à primeira.
+  const filas = new Map();
+  return function processar(evento) {
+    const chave = evento?.data?.key?.remoteJid || '-';
+    const atual = (filas.get(chave) ?? Promise.resolve()).catch(() => {}).then(() => tratar(evento));
+    filas.set(chave, atual);
+    atual.finally(() => { if (filas.get(chave) === atual) filas.delete(chave); }).catch(() => {});
+    return atual;
+  };
+
+  async function tratar(evento) {
     if (evento?.event !== 'messages.upsert') return;
     const d = evento.data;
     if (!d?.key || !d.message) return;
@@ -287,10 +350,16 @@ export function criarBot({ catalogo, publicUrl }) {
 
     if (novaConversa) {
       await mandar(jid, config.saudacao);
+      const jaPediuAlgo = e.temPerfil || e.bicicleta || e.preco || e.pecas || e.manutencao || e.endereco || e.entrega || e.pagamento || e.atendente;
+      if (!jaPediuAlgo) return salvar(jid, 'interesse', perfil); // "Olá, tenho interesse…": só a saudação
+      if (iaAtiva() && await atenderComIA(jid, perfil, e)) return;
       // A 1ª mensagem já diz o que quer ("quero bike aro 20 pra menina")? Segue direto
       if (e.temPerfil && !e.pecas && !e.manutencao) return fluxoBicicleta(jid, contato(jid), perfil, e);
       return salvar(jid, 'interesse', perfil);
     }
+
+    // Com a IA ligada, ela conduz a conversa; as regras abaixo ficam de reserva
+    if (iaAtiva() && await atenderComIA(jid, perfil, e)) return;
 
     // Perguntamos se gostou do modelo: a resposta vai para o atendente,
     // a não ser que o cliente peça outro tamanho ("e o aro 24?", "tem pra 10 anos?")
@@ -300,7 +369,8 @@ export function criarBot({ catalogo, publicUrl }) {
       if (e.preco || e.pagamento) {
         const preco = config.precos[perfil.viuPasta];
         if (!preco) return chamarAtendente(jid, c, config.precoDaBike(perfil.viu || 'bike'));
-        await mandar(jid, config.valorDaBike(perfil.viu, preco)); // segue esperando: "sim" chama o atendente
+        await mandar(jid, config.valorDaBike(perfil.viu, preco));
+        await mandar(jid, config.finalizar); // segue esperando: "sim" chama o atendente
         return;
       }
       if (e.entrega) return chamarAtendente(jid, c, config.entrega);

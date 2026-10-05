@@ -1,0 +1,50 @@
+// Conversas com a IA de verdade (OpenAI), sem mandar nada no WhatsApp (DRY_RUN): npm run testar-ia
+process.env.DRY_RUN = '1';
+process.env.DB_PATH = ':memory:';
+if (!process.env.OPENAI_API_KEY) throw new Error('Falta OPENAI_API_KEY no .env');
+const { resolve } = await import('node:path');
+const { carregarCatalogo } = await import('../src/catalogo.js');
+const { criarBot } = await import('../src/bot.js');
+const { contato } = await import('../src/db.js');
+
+const dados = carregarCatalogo(resolve(process.env.MEDIA_DIR || './midia'));
+const bot = criarBot({ catalogo: () => dados, publicUrl: 'https://exemplo' });
+
+const logOriginal = console.log;
+console.log = (...a) => {
+  if (a[0] !== '[DRY_RUN]') return logOriginal(...a);
+  const corpo = JSON.parse(a[2]);
+  if (a[1].includes('sendMedia')) return logOriginal(`   🤖 [${corpo.mediatype === 'video' ? 'vídeo' : 'foto'}] ${decodeURIComponent(corpo.media.split('/midia/')[1])}`);
+  logOriginal('   🤖 ' + corpo.text.replace(/\n+/g, '\n      '));
+};
+
+let n = 0;
+async function conversa(titulo, falas) {
+  const numero = `55319${String(++n).padStart(8, '0')}`;
+  logOriginal(`\n══════ ${titulo} ══════`);
+  for (const [i, f] of falas.entries()) {
+    logOriginal(`👤 ${f}`);
+    await bot({
+      event: 'messages.upsert',
+      data: {
+        key: { remoteJid: `${numero}@s.whatsapp.net`, fromMe: false, id: `ia${n}-${i}` },
+        pushName: 'Cliente',
+        message: i === 0
+          ? { extendedTextMessage: { text: f, contextInfo: { externalAdReply: { title: 'Teste', sourceType: 'ad', sourceId: '1' } } } }
+          : { conversation: f },
+        messageTimestamp: Math.floor(Date.now() / 1000),
+      },
+    });
+  }
+  const c = contato(`${numero}@s.whatsapp.net`);
+  logOriginal(`   (pausado=${c.pausado_ate > Date.now()})`);
+}
+
+const roteiros = {
+  raynan: ['Olá, tenho interesse e gostaria de mais informações', 'bike aro 20 menina', 'e aro 16, tem?', 'quais os valores?', 'sim'],
+  conversa: ['Olá, tenho interesse e gostaria de mais informações', 'queria uma bicicleta pro meu sobrinho', 'ele tem uns 7 anos, é bem alto pra idade', 'gostei, quero essa'],
+  duvidas: ['Olá, tenho interesse e gostaria de mais informações', 'vcs ficam aonde? abre sabado?', 'tem bike pra adulto? eu tenho 1,75', 'aro 29'],
+  fora: ['Olá, tenho interesse e gostaria de mais informações', 'vocês fazem entrega em BH?'],
+};
+const escolha = process.argv[2];
+for (const [nome, falas] of Object.entries(roteiros)) if (!escolha || escolha === nome) await conversa(nome, falas);
