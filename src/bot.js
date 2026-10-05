@@ -214,10 +214,14 @@ export function criarBot({ catalogo, publicUrl }) {
     const ts = Number(d.messageTimestamp) * 1000;
     if (ts && Date.now() - ts > 2 * 60_000) return;
 
-    const telefone = jid.endsWith('@s.whatsapp.net') ? jid.split('@')[0] : null;
-    garantirContato(jid, { nome: d.key.fromMe ? null : d.pushName, telefone });
     const texto = textoDa(d.message);
     const tipo = tipoDa(d.message);
+
+    // Boas-vindas automática do anúncio (".") e afins: ignora de vez (não pausa, não registra, não responde)
+    if (tipo === 'texto' && config.ignorar.includes(texto)) return;
+
+    const telefone = jid.endsWith('@s.whatsapp.net') ? jid.split('@')[0] : null;
+    garantirContato(jid, { nome: d.key.fromMe ? null : d.pushName, telefone });
 
     // Saiu deste WhatsApp sem ser por nós → atendente respondendo pelo celular: registra e pausa o bot
     if (d.key.fromMe) {

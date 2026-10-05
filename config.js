@@ -11,6 +11,10 @@ export const config = {
   // Vídeos maiores que isso não são enviados (o WhatsApp recusa arquivos muito grandes)
   videoMaxMB: 60,
 
+  // Mensagens automáticas (boas-vindas do anúncio, saudação/ausência do WhatsApp Business):
+  // não contam como atendente (não pausam o bot) nem como pergunta do cliente.
+  ignorar: ['.'],
+
   saudacao: [
     'Olá.',
     '',
