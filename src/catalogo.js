@@ -1,6 +1,7 @@
 // Lê as subpastas de MEDIA_DIR (uma por bicicleta) e monta o catálogo.
 import { readdirSync, statSync } from 'node:fs';
 import { join, extname } from 'node:path';
+import { config } from '../config.js';
 
 const MIME = {
   '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.png': 'image/png', '.webp': 'image/webp',
@@ -39,7 +40,8 @@ export function carregarCatalogo(dir) {
       const envio = [...fotos.filter((a) => a.tipo === 'image'), ...fotos.filter((a) => a.tipo === 'video')];
       const aro = Number(/aro\s*(\d+)/i.exec(d.name)?.[1]) || null;
       // F/M pelo nome da pasta (Free Ride é masculina); BMX e sem gênero valem para os dois
-      const tipo = /\bfem/i.test(d.name) ? 'F' : /\bmasc|free ?ride/i.test(d.name) ? 'M' : null;
+      const tipo = config.generoPorPasta?.[d.name]
+        ?? (/\bfem/i.test(d.name) ? 'F' : /\bmasc|free ?ride/i.test(d.name) ? 'M' : null);
       // BMX e Free Ride só são oferecidas quando o cliente pede por elas
       const estilo = /bmx/i.test(d.name) ? 'bmx' : /free ?ride/i.test(d.name) ? 'free ride' : null;
       return { pasta: d.name, nome: nomeBonito(d.name), aro, tipo, estilo, arquivos, envio };

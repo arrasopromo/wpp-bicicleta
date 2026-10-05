@@ -84,6 +84,10 @@ export const config = {
   interesse: 'Ótima escolha! Um atendente já vai falar com você para finalizar.',
   outrosModelos: 'Sem problema! Temos outros modelos e cores. Um atendente já vai te mostrar as opções.',
   entrega: 'Sobre entrega e prazo, um atendente já vai te responder aqui.',
+  // Gênero de pastas que não dizem "fem"/"masc" no nome (a Aro 29 também existe feminina,
+  // então o bot pergunta o gênero; feminina sem fotos → atendente)
+  generoPorPasta: { 'Aro29': 'M' },
+
   // Preço por pasta (nome exato da pasta). Pasta sem preço aqui → o atendente passa o valor.
   precos: {
     'Aro12 fem': 'a partir de *R$ 285,00*, em até 3x',
