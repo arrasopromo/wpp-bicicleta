@@ -268,6 +268,18 @@ export function criarBot({ catalogo, publicUrl }) {
       console.error('IA falhou, seguindo pelas regras:', err.message);
       return false;
     }
+    // Às vezes a IA escreve o comando no texto ({"pasta":"Aro16 fem"}) em vez de usar a ferramenta:
+    // vira pedido de bike e o código nunca vai para o cliente
+    const comandos = r.texto.match(/\{[^{}]*\}/g) ?? [];
+    for (const bloco of comandos) {
+      try {
+        const args = JSON.parse(bloco);
+        if (args.pasta && !r.acoes.some((a) => a.nome === 'enviar_bike')) r.acoes.push({ nome: 'enviar_bike', args });
+        if (args.motivo && !r.acoes.some((a) => a.nome === 'chamar_atendente')) r.acoes.push({ nome: 'chamar_atendente', args });
+      } catch { /* não era JSON */ }
+    }
+    r.texto = r.texto.replace(/\{[^{}]*\}/g, '').trim();
+
     let atendente = r.acoes.find((a) => a.nome === 'chamar_atendente');
     // Disse que vai chamar o atendente mas não acionou: aciona (senão a IA continuaria no chat).
     // Só frase afirmativa — "Quer que um atendente finalize com você?" é pergunta e não conta.
