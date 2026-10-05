@@ -131,7 +131,7 @@ export function criarBot({ catalogo, publicUrl }) {
   }
 
   // Foto + vídeo da bike destaque da pasta, e pergunta se gostou
-  async function enviarBicicleta(jid, bike, perfil) {
+  async function enviarBicicleta(jid, bike, perfil, e = {}) {
     for (const [i, arq] of bike.envio.entries()) {
       if (arq.tipo === 'video' && arq.mb > config.videoMaxMB) {
         console.warn(`vídeo grande demais, pulando: ${bike.pasta}/${arq.nome} (${arq.mb.toFixed(0)} MB)`);
@@ -150,8 +150,10 @@ export function criarBot({ catalogo, publicUrl }) {
           mimetype: arq.mimetype,
         });
     }
-    await mandar(jid, config.gostou);
-    salvar(jid, 'gostou', { ...perfil, tentativas: 0, viu: bike.nome });
+    // "quanto custa a aro 16 menina?" → já manda o valor junto
+    const preco = (e.preco || e.pagamento) && config.precos[bike.pasta];
+    await mandar(jid, preco ? config.valorDaBike(bike.nome, preco) : config.gostou);
+    salvar(jid, 'gostou', { ...perfil, tentativas: 0, viu: bike.nome, viuPasta: bike.pasta });
   }
 
   // Com o que já sabemos do cliente, decide: perguntar, recomendar ou mandar a bike.
@@ -195,7 +197,8 @@ export function criarBot({ catalogo, publicUrl }) {
     if (temSim) await mandar(jid, temSim);
     // Já mandou essa mesma bike: não repete foto e vídeo
     if (opcoes.length === 1 && opcoes[0].nome === perfil.viu) {
-      await mandar(jid, config.mesmaBike);
+      const preco = (e.preco || e.pagamento) && config.precos[opcoes[0].pasta];
+      await mandar(jid, preco ? config.valorDaBike(opcoes[0].nome, preco) : config.mesmaBike);
       return salvar(jid, 'gostou', perfil);
     }
 
@@ -205,7 +208,7 @@ export function criarBot({ catalogo, publicUrl }) {
       await mandar(jid, config.perguntaQualAro(arosDisponiveis));
       return salvarRecomendou('aro');
     }
-    return enviarBicicleta(jid, opcoes[0], perfil);
+    return enviarBicicleta(jid, opcoes[0], perfil, e);
   }
 
   // Não entendeu: tenta de novo uma vez, na segunda chama o atendente
@@ -294,7 +297,12 @@ export function criarBot({ catalogo, publicUrl }) {
     if (c.etapa === 'gostou') {
       const outroTamanho = !e.sim && (e.aro || e.estilo || e.idade != null || e.altura || AROS.includes(e.numero));
       if (outroTamanho) return fluxoBicicleta(jid, c, AROS.includes(e.numero) ? { ...perfil, aro: e.numero } : perfil, e);
-      if (e.preco || e.pagamento) return chamarAtendente(jid, c, config.precoDaBike(perfil.viu || 'bike'));
+      if (e.preco || e.pagamento) {
+        const preco = config.precos[perfil.viuPasta];
+        if (!preco) return chamarAtendente(jid, c, config.precoDaBike(perfil.viu || 'bike'));
+        await mandar(jid, config.valorDaBike(perfil.viu, preco)); // segue esperando: "sim" chama o atendente
+        return;
+      }
       if (e.entrega) return chamarAtendente(jid, c, config.entrega);
       if (e.endereco) return mandar(jid, config.endereco); // continua esperando a resposta do "gostou?"
       if (e.atendente) return chamarAtendente(jid, c, config.atendente);

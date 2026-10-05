@@ -46,6 +46,8 @@ async function conversa(titulo, numero, falas) {
 }
 
 await conversa('Raynan: outro aro e depois valor', '5531900000022', ['oi', 'bike aro 20 menina', 'e aro 16, tem?', 'quais os valores?']);
+await conversa('Preço junto com o pedido', '5531900000025', ['oi', 'quanto custa a aro 24 menina?', 'sim']);
+await conversa('Preço sem cadastro (aro 29)', '5531900000026', ['oi', 'aro 29', 'qual o valor?']);
 await conversa('Depois do gostou: resposta qualquer', '5531900000023', ['oi', 'aro 12 menino', 'meu filho tem 2 anos e meio']);
 await conversa('Depois do gostou: não gostei', '5531900000024', ['oi', 'aro 12 menino', 'nao gostei muito']);
 await conversa('Print do cliente: pergunta aro 16', '5531900000020', ['Olá, tenho interesse e gostaria de mais informações', 'bicicleta para criança de 2 anos', 'tem aro 16? acho que e melhor', 'nao entendi, voce tem aro 16 ou nao', 'menina']);

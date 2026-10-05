@@ -81,10 +81,26 @@ export const config = {
 
   // Quando o bot passa a conversa para uma pessoa (ele fica calado depois)
   atendente: 'Certo! Um atendente vai te responder aqui em instantes.',
-  interesse: 'Ótima escolha! Um atendente já vai te passar valores e condições.',
+  interesse: 'Ótima escolha! Um atendente já vai falar com você para finalizar.',
   outrosModelos: 'Sem problema! Temos outros modelos e cores. Um atendente já vai te mostrar as opções.',
   entrega: 'Sobre entrega e prazo, um atendente já vai te responder aqui.',
-  // depois de mostrar uma bike: pediu valor dela
+  // Preço por pasta (nome exato da pasta). Pasta sem preço aqui → o atendente passa o valor.
+  precos: {
+    'Aro12 fem': 'a partir de *R$ 285,00*, em até 3x',
+    'Aro12 masc': 'a partir de *R$ 285,00*, em até 3x',
+    'Aro16 fem': 'a partir de *R$ 545,00*, em até 6x',
+    'Aro16 masc': 'a partir de *R$ 545,00*, em até 6x',
+    'Aro20 fem': 'a partir de *R$ 635,00*, em até 6x',
+    'Aro20 masc': 'a partir de *R$ 598,00*, em até 6x',
+    'Aro20BMX': '*R$ 960,00*, em até 6x',
+    'Aro24 fem': 'sem marcha a partir de *R$ 685,00*, com marcha a partir de *R$ 735,00* e com quadro de alumínio a partir de *R$ 795,00*, em até 6x',
+    'Aro24 masc': 'sem marcha a partir de *R$ 665,00* e com marcha a partir de *R$ 698,00*, em até 6x',
+    'Aro26 fem': 'com marcha, a partir de *R$ 719,00* (o parcelamento o atendente te passa)',
+    'Aro26 masc': 'com marcha, a partir de *R$ 719,00* (o parcelamento o atendente te passa)',
+    'Aro26 free ride': '*R$ 2.390,00*, em até 10x',
+  },
+  valorDaBike: (nome, preco) => `A *${nome}* sai ${preco}.\n\nQuer que um atendente finalize com você?`,
+  // sem preço cadastrado para a bike
   precoDaBike: (nome) => `Vou pedir pra um atendente te passar o valor da *${nome}* e as condições de pagamento. Ele já te responde aqui!`,
   preco: 'Os valores variam por modelo. Um atendente já vai te passar os preços e condições.',
   pecas: 'Temos sim peças e acessórios! Me diz qual você procura que um atendente já te responde com disponibilidade e valor.',
