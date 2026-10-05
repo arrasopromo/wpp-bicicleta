@@ -333,13 +333,37 @@ export function criarBot({ catalogo, publicUrl }) {
   // Uma mensagem por vez para cada contato: duas mensagens seguidas não geram duas respostas
   // em paralelo, e a segunda já vê o que foi respondido à primeira.
   const filas = new Map();
-  return function processar(evento) {
-    const chave = evento?.data?.key?.remoteJid || '-';
-    const atual = (filas.get(chave) ?? Promise.resolve()).catch(() => {}).then(() => tratar(evento));
+  function naFila(chave, fn) {
+    const atual = (filas.get(chave) ?? Promise.resolve()).catch(() => {}).then(fn);
     filas.set(chave, atual);
     atual.finally(() => { if (filas.get(chave) === atual) filas.delete(chave); }).catch(() => {});
     return atual;
-  };
+  }
+
+  // "Retomar bot" no CRM: se a última mensagem é do cliente e ficou sem resposta, a IA responde agora.
+  // O que o cliente já disse (gênero, idade, aro…) é remontado a partir de todo o histórico.
+  async function retomar(jid) {
+    const c = contato(jid);
+    const msgs = mensagensDe(jid);
+    const ultima = msgs.at(-1);
+    const textoDe = (m) => (m.tipo === 'texto' || m.tipo === 'audio' ? m.texto : '') || '';
+    atualizarContato(jid, { visto_em: Date.now(), etapa: c?.etapa || 'ia' });
+    if (!c || !iaAtiva() || ultima?.autor !== 'cliente' || !textoDe(ultima)) return false;
+
+    const perfil = {};
+    for (const m of msgs.filter((x) => x.autor === 'cliente')) {
+      const ent = entender(textoDe(m));
+      for (const k of ['genero', 'idade', 'altura', 'aro', 'estilo']) if (ent[k] != null) perfil[k] = ent[k];
+    }
+    Object.assign(perfil, { viu: lerPerfil(c).viu, viuPasta: lerPerfil(c).viuPasta });
+    return atenderComIA(jid, perfil, entender(textoDe(ultima)));
+  }
+
+  function processar(evento) {
+    return naFila(evento?.data?.key?.remoteJid || '-', () => tratar(evento));
+  }
+  processar.retomar = (jid) => naFila(jid, () => retomar(jid));
+  return processar;
 
   async function tratar(evento) {
     if (evento?.event !== 'messages.upsert') return;

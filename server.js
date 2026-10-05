@@ -128,7 +128,15 @@ async function apiCrm(req, res, caminho) {
   const corpo = await lerJson(req);
 
   if (acao === 'pausar') {
-    atualizarContato(jid, { pausado_ate: corpo.pausado ? PAUSA_MANUAL : 0, ...(corpo.pausado ? {} : { etapa: null }) });
+    if (corpo.pausado) {
+      atualizarContato(jid, { pausado_ate: PAUSA_MANUAL });
+    } else {
+      // Retomar: tira a pausa e, se o cliente ficou sem resposta, a IA responde a última mensagem agora
+      const c = contato(jid);
+      atualizarContato(jid, { pausado_ate: 0, ...(c.status === 'aguardando humano' ? { status: 'novo' } : {}) });
+      const respondeu = await processar.retomar(jid).catch((e) => { console.error('retomar:', e.message); return false; });
+      return json(res, { contato: contato(jid), respondeu });
+    }
   } else if (acao === 'status' && STATUS.includes(corpo.status)) {
     atualizarContato(jid, { status: corpo.status });
   } else if (acao === 'enviar') {

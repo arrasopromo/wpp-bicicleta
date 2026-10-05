@@ -417,7 +417,7 @@ function renderTopo(c) {
             <div class="st-pop" id="st-pop" hidden>${estado.status.map((s) =>
               `<button type="button" class="st-op" data-s="${esc(s)}">${statusHtml(s)}${s === c.status ? '<span class="ok">✓</span>' : ''}</button>`).join('')}</div>
           </div>
-          ${automacaoVale ? `<button class="btn ${p ? 'primario' : ''}" id="pausa">${p ? 'Retomar bot' : 'Pausar bot'}</button>` : ''}
+          ${automacaoVale ? `<button class="btn ${p ? 'primario' : ''}" id="pausa" title="${p ? 'Reativa o bot; se o cliente ficou sem resposta, a IA responde agora' : 'O bot para de responder este cliente'}">${p ? 'Retomar bot' : 'Pausar bot'}</button>` : ''}
         </div>
       </div>
     </div>`;
@@ -534,8 +534,10 @@ function ligarTopo(c) {
   };
   const pausa = $('#pausa');
   if (pausa) pausa.onclick = async () => {
+    const retomando = pausado(c);
     pausa.disabled = true;
-    await api(url + '/pausar', { pausado: !pausado(c) });
+    if (retomando) pausa.textContent = 'Respondendo…'; // a IA pode responder a mensagem pendente agora
+    try { await api(url + '/pausar', { pausado: !retomando }); } catch (err) { alert(err.message); }
     await carregarConversa(false); carregarLista();
   };
 }
