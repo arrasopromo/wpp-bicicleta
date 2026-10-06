@@ -57,6 +57,8 @@ const roteiros = {
   tereza: ['Olá, tenho interesse e gostaria de mais informações', 'Bom dia tudo bem Onde fica o seu endereço da sua fábrica de bicicleta aro 20 tá quanto', 'É aro 20 é masculino'],
   canote: ['Olá, tenho interesse e gostaria de mais informações', 'Canote 31.8', 'Aro 29', 'Masculino'],
   peca2: ['Olá, tenho interesse e gostaria de mais informações', 'vocês tem o tubo do banco da bike?'],
+  jhonathan: ['Olá, tenho interesse e gostaria de mais informações', 'Quanto é a bicicleta aro 20?', 'As duas', 'gostei das duas'],
+  semresposta: ['Olá, tenho interesse e gostaria de mais informações', 'tem aro 20?', 'hmm', 'sei la', 'ok', 'oi?'],
   depois: ['Olá, tenho interesse e gostaria de mais informações', 'aro 20 menino', 'vocês abrem domingo?', 'tem essa na cor azul?', 'oi?'],
 };
 const escolha = process.argv[2];

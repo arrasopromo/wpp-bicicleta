@@ -31,6 +31,7 @@ ROTEIRO PARA BICICLETA (é o principal: quando o assunto é bicicleta, NUNCA cha
 1. Descubra se é masculina ou feminina e a idade (ou altura, ou o aro que a pessoa quer).
    Filho, sobrinho, neto, menino, marido = masculina. Filha, sobrinha, neta, menina, esposa = feminina.
    Se o cliente não disse o gênero, PERGUNTE antes de enviar. Nunca presuma. Ex.: "bicicleta aro 16" → "Temos sim, aro 16! É masculina ou feminina?".
+   Se ele quer as duas ("as duas", "ambas", "um de cada", "menino e menina"), chame enviar_bike para a masculina E para a feminina do mesmo aro.
 2. Aro pela idade/altura:
    Aro 12: a partir de 2 anos (85 a 100 cm) | Aro 16: 3 a 6 anos (100 a 120 cm) | Aro 20: a partir de 6 anos (115 a 135 cm)
    Aro 24: a partir de 10 anos (130 a 150 cm) | Aro 26: a partir de 12 anos, adolescentes e adultos (a partir de 1,50 m)

@@ -28,6 +28,7 @@ const RE = {
   feminino: /(feminin|\bfem\b|menina|mulher|garota|filha|neta|sobrinha|esposa|namorada|\bmoca\b|\bela\b|afilhada)/,
   masculino: /(masculin|\bmasc\b|menino|homem|garoto|\bfilho|\bneto|sobrinho|marido|namorado|rapaz|\bele\b|afilhado)/,
   adulto: /\b(adulto|adulta|adultos|pra mim|para mim|eu mesmo|eu mesma)\b/,
+  ambos: /\b(as duas|os dois|ambas|ambos|as 2|os 2|dois modelos|duas opcoes|um de cada|uma de cada|masculina e (a )?feminina|feminina e (a )?masculina|menino e (uma )?menina|menina e (um )?menino|masculino e feminino|feminino e masculino)\b/,
   sim: /^(sim|s|quero|queria|gostei|gostei sim|isso|pode|pode ser|ok|claro|com certeza|tenho interesse|interessei|amei|top|show|perfeito|lindo|linda|bonito|bonita)\b/,
   nao: /^(nao|n|nem|mais ou menos|meh|achei feio|feio|feia)\b|nao gostei|nao curti/,
 };
@@ -48,10 +49,14 @@ export function entender(texto) {
     if (RE[k].test(t)) r[k] = true;
   }
 
-  // Gênero: se aparecerem os dois ("feminina, mas gosta de personagens masculinos"), vale o primeiro citado
-  const f = t.search(RE.feminino);
-  const m = t.search(RE.masculino);
-  if (f >= 0 || m >= 0) r.genero = m < 0 || (f >= 0 && f < m) ? 'F' : 'M';
+  // Gênero: 'A' = quer as duas versões ("as duas", "ambas", "menino e menina")
+  if (RE.ambos.test(t)) r.genero = 'A';
+  else {
+    // se aparecerem os dois ("feminina, mas gosta de personagens masculinos"), vale o primeiro citado
+    const f = t.search(RE.feminino);
+    const m = t.search(RE.masculino);
+    if (f >= 0 || m >= 0) r.genero = m < 0 || (f >= 0 && f < m) ? 'F' : 'M';
+  }
 
   // estilos especiais: só aparecem quando o cliente pede
   if (/\bbmx\b/.test(t)) r.estilo = 'bmx';

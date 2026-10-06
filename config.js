@@ -65,11 +65,12 @@ export const config = {
   descrever: ({ genero, estilo }, aros) => [
     estilo ? estilo.toUpperCase() : null,
     aros.length ? `aro ${aros.join(' / ')}` : null,
-    genero === 'F' ? 'feminina' : genero === 'M' ? 'masculina' : null,
+    genero === 'F' ? 'feminina' : genero === 'M' ? 'masculina' : genero === 'A' ? 'masculina e feminina' : null,
   ].filter(Boolean).join(' '),
 
   // Depois da foto + vídeo da bike destaque
   gostou: 'Gostou desse modelo?',
+  gostouVarios: 'Gostou de algum desses modelos?',
   mesmaBike: 'É justamente essa que te mandei! Gostou desse modelo?',
 
   semFotos: (descricao) => `No momento não tenho as fotos da *${descricao}* aqui, mas um atendente já vai te mostrar as opções.`,

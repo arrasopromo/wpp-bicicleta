@@ -165,8 +165,17 @@ export function criarBot({ catalogo, publicUrl }) {
     });
   }
 
+  // Várias bikes de uma vez ("as duas": masculina e feminina): foto, vídeo e preço de cada, e uma pergunta só no fim
+  async function enviarVarias(jid, bikes, perfil) {
+    if (bikes.length === 1) return enviarBicicleta(jid, bikes[0], perfil);
+    for (const b of bikes) await enviarBicicleta(jid, b, perfil, {}, { perguntar: false });
+    await mandar(jid, config.gostouVarios);
+    const ultima = bikes.at(-1);
+    salvar(jid, 'gostou', { ...perfil, tentativas: 0, viu: ultima.nome, viuPasta: ultima.pasta });
+  }
+
   // Foto + vídeo da bike destaque da pasta, e pergunta se gostou
-  async function enviarBicicleta(jid, bike, perfil, e = {}) {
+  async function enviarBicicleta(jid, bike, perfil, e = {}, { perguntar = true } = {}) {
     for (const [i, arq] of bike.envio.entries()) {
       if (arq.tipo === 'video' && arq.mb > config.videoMaxMB) {
         console.warn(`vídeo grande demais, pulando: ${bike.pasta}/${arq.nome} (${arq.mb.toFixed(0)} MB)`);
@@ -188,6 +197,7 @@ export function criarBot({ catalogo, publicUrl }) {
     // Depois da foto e do vídeo: valor com parcelamento (se cadastrado) e a pergunta
     const preco = config.precos[bike.pasta];
     if (preco) await mandar(jid, config.valorDaBike(bike.nome, preco));
+    if (!perguntar) return;
     await mandar(jid, config.gostou);
     salvar(jid, 'gostou', { ...perfil, tentativas: 0, viu: bike.nome, viuPasta: bike.pasta });
   }
@@ -226,7 +236,8 @@ export function criarBot({ catalogo, publicUrl }) {
       await mandar(jid, temSim ? `${temSim} ${vezes ? 'Só preciso saber: é' : 'É'} masculina ou feminina?` : pergunta);
       return salvarRecomendou('perfil', { aro: perfil.aro ?? (aros.length === 1 ? aros[0] : undefined), vezesGenero: vezes + 1 });
     }
-    if (perfil.genero) opcoes = opcoes.filter((b) => b.tipo === perfil.genero || b.tipo === null);
+    // 'A' = quer as duas (masculina e feminina): mantém as duas versões do aro
+    if (perfil.genero && perfil.genero !== 'A') opcoes = opcoes.filter((b) => b.tipo === perfil.genero || b.tipo === null);
 
     if (recomendacao) await mandar(jid, recomendacao);
     if (!opcoes.length) return chamarAtendente(jid, c, config.semFotos(config.descrever(perfil, aros)));
@@ -245,6 +256,7 @@ export function criarBot({ catalogo, publicUrl }) {
       await mandar(jid, config.perguntaQualAro(arosDisponiveis));
       return salvarRecomendou('aro');
     }
+    if (perfil.genero === 'A') return enviarVarias(jid, opcoes.slice(0, 2), perfil);
     return enviarBicicleta(jid, opcoes[0], perfil, e);
   }
 
@@ -294,36 +306,50 @@ export function criarBot({ catalogo, publicUrl }) {
     // (pergunta de preço entra aqui: "quanto tá uma bike pra 5 anos?" segue o roteiro e o preço vai junto com a bike)
     const sobreBike = (e.bicicleta || e.temPerfil) && !(e.atendente || e.pecas || e.manutencao || e.entrega || e.pagamento);
     if (atendente && sobreBike && !lerPerfil(contato(jid)).viuPasta) {
-      // Pede o que falta para mostrar a bike (o preço vai junto com ela)
-      console.warn('IA quis chamar o atendente num pedido de bike; perguntando o que falta');
-      const temTamanho = perfil.idade != null || perfil.altura || perfil.aro;
-      const pergunta = !perfil.genero && !temTamanho ? config.perguntaPerfil
-        : !perfil.genero ? config.perguntaGenero
-        : 'Para qual idade?';
+      // As regras do roteiro assumem: perguntam o que falta (com limite de 3 vezes — depois passa
+      // para a equipe) ou já mandam a bike
+      console.warn('IA quis chamar o atendente num pedido de bike; seguindo o roteiro');
       if (e.endereco) await mandar(jid, config.endereco); // perguntou o endereço junto
-      await mandar(jid, pergunta);
-      salvar(jid, 'ia', perfil);
+      await fluxoBicicleta(jid, contato(jid), perfil, e);
       return true;
     }
-    const pedida = r.acoes.find((a) => a.nome === 'enviar_bike');
-    let bike = pedida && catalogo().find((b) => b.pasta === pedida.args.pasta);
+
+    // Bikes que a IA pediu (pode ser mais de uma: "as duas")
+    const pastas = [...new Set(r.acoes.filter((a) => a.nome === 'enviar_bike').map((a) => a.args.pasta))];
+    let bikes = pastas.map((p) => catalogo().find((b) => b.pasta === p)).filter(Boolean).slice(0, 2);
 
     // Trava de gênero: bike masculina/feminina só depois que o cliente disse qual (BMX e unissex passam)
-    if (bike?.tipo && !bike.estilo) {
+    const comGenero = bikes.find((b) => b.tipo && !b.estilo);
+    if (comGenero) {
       if (!perfil.genero) {
-        const pergunta = e.aro ? `${config.temSim(`aro ${e.aro}`)} É masculina ou feminina?` : config.perguntaGenero;
-        await mandar(jid, pergunta);
-        salvar(jid, 'ia', { ...perfil, aro: bike.aro });
+        await fluxoBicicleta(jid, contato(jid), { ...perfil, aro: comGenero.aro }, e); // pergunta com limite
         return true;
       }
-      if (bike.tipo !== perfil.genero) {
-        const certa = catalogo().find((b) => b.aro === bike.aro && b.tipo === perfil.genero && !b.estilo);
-        if (!certa) return chamarAtendente(jid, contato(jid), config.semFotos(config.descrever(perfil, [bike.aro]))).then(() => true);
-        bike = certa;
+      if (perfil.genero === 'A') {
+        // quer as duas: masculina e feminina do mesmo aro
+        bikes = catalogo().filter((b) => b.aro === comGenero.aro && !b.estilo && b.tipo).slice(0, 2);
+      } else {
+        const certas = bikes.map((b) => (!b.tipo || b.estilo || b.tipo === perfil.genero ? b
+          : catalogo().find((x) => x.aro === b.aro && x.tipo === perfil.genero && !x.estilo)));
+        if (certas.some((b) => !b)) return chamarAtendente(jid, contato(jid), config.semFotos(config.descrever(perfil, [comGenero.aro]))).then(() => true);
+        bikes = [...new Map(certas.map((b) => [b.pasta, b])).values()];
       }
     }
-    const repetida = bike && bike.pasta === lerPerfil(contato(jid)).viuPasta;
-    if (repetida) bike = null;
+    // Não reenvia bike que o cliente já recebeu nesta conversa
+    const jaVistas = new Set(historicoParaIA(jid).enviadas);
+    const repetida = bikes.length > 0 && bikes.every((b) => jaVistas.has(b.nome) || b.pasta === lerPerfil(contato(jid)).viuPasta);
+    if (repetida) bikes = [];
+    const bike = bikes[0];
+
+    // Anti-loop: a IA não pergunta o gênero uma 3ª vez (nem com outras palavras) — passa para a equipe
+    const perguntaGenero = /masculin|feminin|menino.*menina|homem.*mulher/i;
+    const jaPerguntou = mensagensDe(jid).slice(-10)
+      .filter((m) => m.autor === 'bot' && m.tipo === 'texto' && /\?\s*$/.test(m.texto) && perguntaGenero.test(m.texto)).length;
+    if (!bikes.length && !atendente && /\?\s*$/.test(r.texto) && perguntaGenero.test(r.texto) && jaPerguntou >= 2) {
+      console.warn('IA ia repetir a pergunta do gênero; passando para a equipe');
+      atendente = { args: {} };
+      r.texto = '';
+    }
 
     const limpar = (s) => String(s ?? '')
       .replace(/\[[^\]]*\]/g, '')          // nunca manda anotação entre colchetes
@@ -331,8 +357,14 @@ export function criarBot({ catalogo, publicUrl }) {
       .trim();
     const texto = limpar(r.texto);
     if (texto && !atendente) await mandar(jid, texto);
-    if (repetida && !texto) await mandar(jid, config.mesmaBike);
-    if (bike) await enviarBicicleta(jid, bike, perfil);
+    if (repetida && !texto) {
+      // Pediu de novo uma bike que já viu: se perguntou o valor, responde o preço dela
+      const viu = lerPerfil(contato(jid));
+      const preco = (e.preco || e.pagamento) && config.precos[viu.viuPasta];
+      if (preco) await mandar(jid, config.valorDaBike(viu.viu, preco));
+      await mandar(jid, preco ? config.gostou : config.mesmaBike);
+    }
+    if (bikes.length) await enviarVarias(jid, bikes, perfil);
     if (atendente) await chamarAtendente(jid, contato(jid), limpar(atendente.args.mensagem) || config.atendente);
     else if (!bike) salvar(jid, repetida ? 'gostou' : 'ia', { ...lerPerfil(contato(jid)), ...perfil });
     if (!r.texto && !bike && !atendente && !repetida) console.warn('IA não respondeu nada para', jid);
@@ -400,6 +432,8 @@ export function criarBot({ catalogo, publicUrl }) {
     // Boas-vindas automática do anúncio (".") e outros robôs (WhatAuto): ignora de vez (não pausa, não registra, não responde)
     if (tipo === 'texto' && config.ignorar.includes(texto)) return;
     if (config.ignorarSeContem.some((s) => texto.toLowerCase().includes(s))) return;
+    // Reação, mensagem apagada/editada e afins chegam sem texto: não são mensagem do cliente
+    if (tipo === 'texto' && !texto) return;
 
     const telefone = jid.endsWith('@s.whatsapp.net') ? jid.split('@')[0] : null;
     garantirContato(jid, { nome: d.key.fromMe ? null : d.pushName, telefone });
@@ -486,6 +520,10 @@ export function criarBot({ catalogo, publicUrl }) {
 
     // Peças, manutenção, entrega ou pedido de atendente: direto para a equipe, sem passar pela IA
     if (precisaDeHumano(e)) return chamarAtendente(jid, c, config.atendente);
+
+    // Respondeu "sim/gostei/quero" ao "Gostou desse(s) modelo(s)?": a equipe assume (sem reenviar nada)
+    const pediuOutroTamanho = e.aro || e.idade != null || e.altura || e.estilo;
+    if (c.etapa === 'gostou' && e.sim && !pediuOutroTamanho) return chamarAtendente(jid, c, config.interesse);
 
     // Com a IA ligada, ela conduz a conversa; as regras abaixo ficam de reserva
     if (iaAtiva() && await atenderComIA(jid, perfil, e)) return;
