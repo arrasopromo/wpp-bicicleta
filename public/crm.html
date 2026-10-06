@@ -332,7 +332,7 @@ const statusHtml = (s) => `<span class="${classeStatus(s)}">${esc(s)}</span>`;
 // ---------- estado global ----------
 async function carregarEstado(corpo) {
   const e = await api('estado', corpo);
-  Object.assign(estado, { botAtivo: e.botAtivo, status: e.status, automacao: e.automacao });
+  Object.assign(estado, { botAtivo: e.botAtivo, status: e.status, automacao: e.automacao, textos: e.textos ?? {} });
   $('#global').classList.toggle('off', !e.botAtivo);
   $('#global-txt').textContent = e.botAtivo ? 'Automação ligada' : 'Automação pausada';
 }
@@ -417,6 +417,7 @@ function renderTopo(c) {
             <div class="st-pop" id="st-pop" hidden>${estado.status.map((s) =>
               `<button type="button" class="st-op" data-s="${esc(s)}">${statusHtml(s)}${s === c.status ? '<span class="ok">✓</span>' : ''}</button>`).join('')}</div>
           </div>
+          <button type="button" class="btn" id="btn-endereco" title="Coloca o endereço e o horário no campo de mensagem (não envia)">Endereço</button>
           ${automacaoVale ? `<button class="btn ${p ? 'primario' : ''}" id="pausa" title="${p ? 'Reativa o bot; se o cliente ficou sem resposta, a IA responde agora' : 'O bot para de responder este cliente'}">${p ? 'Retomar bot' : 'Pausar bot'}</button>`
             : `<button class="btn primario" id="iniciar" title="Liga o bot para este cliente; se ele ficou sem resposta, a IA responde agora">Iniciar bot</button>`}
         </div>
@@ -534,6 +535,16 @@ function ligarTopo(c) {
     await carregarConversa(false); carregarLista();
   };
   const pausa = $('#pausa');
+  // Atalho: preenche o campo de mensagem com o endereço, sem enviar
+  $('#btn-endereco').onclick = () => {
+    const txt = $('#txt'), texto = estado.textos?.endereco;
+    if (!txt || !texto) return;
+    txt.value = txt.value.trim() ? `${txt.value.trimEnd()}\n\n${texto}` : texto;
+    txt.dispatchEvent(new Event('input')); // ajusta a altura do campo
+    txt.focus();
+    txt.setSelectionRange(txt.value.length, txt.value.length);
+  };
+
   const iniciar = $('#iniciar');
   if (iniciar) iniciar.onclick = async () => {
     iniciar.disabled = true; iniciar.textContent = 'Iniciando…';

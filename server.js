@@ -76,7 +76,10 @@ function servirMidia(res, caminho) {
 async function apiCrm(req, res, caminho) {
   if (caminho === 'estado') {
     if (req.method === 'POST') salvarAjuste('bot_ativo', (await lerJson(req)).ativo ? '1' : '0');
-    return json(res, { botAtivo: ajuste('bot_ativo', '1') === '1', automacao: config.automacao, status: STATUS });
+    return json(res, {
+      botAtivo: ajuste('bot_ativo', '1') === '1', automacao: config.automacao, status: STATUS,
+      textos: { endereco: config.endereco }, // atalhos do painel (preenchem o campo de mensagem)
+    });
   }
 
   if (caminho === 'conversas' && req.method === 'GET') {
