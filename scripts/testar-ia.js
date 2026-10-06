@@ -55,6 +55,8 @@ const roteiros = {
   carlos: ['Olá, tenho interesse e gostaria de mais informações', 'Bom dia', 'Quanto tá saindo uma bicicleta pra criança de cinco anos'],
   italo: ['Olá, tenho interesse e gostaria de mais informações', 'Bom dia', 'LOJA: **Casa das Bicicletas**\n\n🚲 Bicicletas, 🛠️ Oficina Bike, ⚙️ Peças Bike\n\n🌐 https://rebrand.ly/casa_das_bicicletas\nwhatauto.ai', 'Queria uma bicicleta para menino de 7 anos'],
   tereza: ['Olá, tenho interesse e gostaria de mais informações', 'Bom dia tudo bem Onde fica o seu endereço da sua fábrica de bicicleta aro 20 tá quanto', 'É aro 20 é masculino'],
+  canote: ['Olá, tenho interesse e gostaria de mais informações', 'Canote 31.8', 'Aro 29', 'Masculino'],
+  peca2: ['Olá, tenho interesse e gostaria de mais informações', 'vocês tem o tubo do banco da bike?'],
   depois: ['Olá, tenho interesse e gostaria de mais informações', 'aro 20 menino', 'vocês abrem domingo?', 'tem essa na cor azul?', 'oi?'],
 };
 const escolha = process.argv[2];

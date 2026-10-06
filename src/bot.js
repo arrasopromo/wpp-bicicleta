@@ -138,6 +138,11 @@ export function detectarAnuncio(d) {
   };
 }
 
+// Assuntos que o bot não atende: peça/acessório (a não ser que esteja comprando bike — falou gênero ou idade),
+// manutenção, entrega/frete ou pedido explícito de falar com alguém
+const precisaDeHumano = (e) =>
+  e.atendente || e.manutencao || e.entrega || (e.pecas && !(e.genero || e.idade != null || e.altura));
+
 const lerPerfil = (c) => { try { return JSON.parse(c.perfil || '{}'); } catch { return {}; } };
 
 export function criarBot({ catalogo, publicUrl }) {
@@ -472,11 +477,15 @@ export function criarBot({ catalogo, publicUrl }) {
       if (!saudouRecente) await mandar(jid, config.saudacao);
       const jaPediuAlgo = e.temPerfil || e.bicicleta || e.preco || e.pecas || e.manutencao || e.endereco || e.entrega || e.pagamento || e.atendente;
       if (!jaPediuAlgo && !saudouRecente) return salvar(jid, 'interesse', perfil); // "Olá, tenho interesse…": só a saudação
+      if (precisaDeHumano(e)) return chamarAtendente(jid, contato(jid), config.atendente);
       if (iaAtiva() && await atenderComIA(jid, perfil, e)) return;
       // A 1ª mensagem já diz o que quer ("quero bike aro 20 pra menina")? Segue direto
       if (e.temPerfil && !e.pecas && !e.manutencao) return fluxoBicicleta(jid, contato(jid), perfil, e);
       return salvar(jid, 'interesse', perfil);
     }
+
+    // Peças, manutenção, entrega ou pedido de atendente: direto para a equipe, sem passar pela IA
+    if (precisaDeHumano(e)) return chamarAtendente(jid, c, config.atendente);
 
     // Com a IA ligada, ela conduz a conversa; as regras abaixo ficam de reserva
     if (iaAtiva() && await atenderComIA(jid, perfil, e)) return;
